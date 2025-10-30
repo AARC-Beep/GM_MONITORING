@@ -170,119 +170,188 @@
   </div>
 <script>
 // =============================
-// ⚓ GOOGLE SHEET CONNECTION
+// ⚓ CONFIGURATION
 // =============================
-
-// Replace this with your own Google Apps Script Web App URL:
-const scriptURL = "https://script.google.com/macros/s/AKfycbwhLD4pBYQ3lgeIYTtSHh33QzKCxI9aGMq7apuwV6cuumbCwzYApaFnZ7MjBhTlL6gAmw/exec"; // Example: https://script.google.com/macros/s/AKfycbyExampleID/exec
-
-// Local backup (for offline use)
+const scriptURL = "https://script.google.com/macros/s/AKfycbwRV0W3veOd81I8XFf4NH3DRXV1_yClB7X2MZorSlFWUJiG0878K4ClpAmjP1DLeRRoBQ/exec"; // <-- Replace with your Google Apps Script Web App URL
+const sheetTabs = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni", "ChatBoard"];
 let localData = JSON.parse(localStorage.getItem("routineData") || "{}");
+let activeSection = "Dashboard";
 
-// Default sections
-const sections = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni"];
-
-// Load dashboard
+// =============================
+// ⚓ INITIALIZATION
+// =============================
 document.addEventListener("DOMContentLoaded", () => {
+  attachSidebarEvents();
+  showSection("Dashboard");
   renderDashboard();
 });
+
+// =============================
+// ⚓ SIDEBAR NAVIGATION
+// =============================
+function attachSidebarEvents() {
+  document.querySelectorAll(".sidebar a").forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const section = e.target.getAttribute("data-section");
+      showSection(section);
+    });
+  });
+}
+
+function showSection(section) {
+  activeSection = section;
+  document.querySelectorAll(".main-section").forEach(s => s.style.display = "none");
+  const target = document.getElementById(section);
+  if (target) target.style.display = "block";
+  if (section === "Dashboard") renderDashboard();
+  else renderForm(section);
+}
 
 // =============================
 // ⚓ RENDER DASHBOARD
 // =============================
 function renderDashboard() {
-  const dash = document.getElementById("dashboard");
-  dash.innerHTML = "";
+  const dash = document.getElementById("Dashboard");
+  dash.innerHTML = `
+    <h2>SeaCrew Dashboard</h2>
+    <small>Connected to Google Sheet: <b>DAILY ROUTINE LOG</b></small><br><br>
+    ${sheetTabs.map(tab => renderCard(tab)).join("")}
+  `;
+}
 
-  sections.forEach(sec => {
-    const entries = localData[sec] || [];
+function renderCard(tab) {
+  const entries = localData[tab] || [];
+  const preview = entries.slice(-3).map(e => {
+    if (tab === "Vessel_Join" || tab === "Arrivals")
+      return `<div><b>${e.Vessel}</b> — ${e.Port}, ${e.No_of_Crew} crew, ${e.Rank}, ${e.Date}, ${e.Flight}</div>`;
+    else if (tab === "ChatBoard")
+      return `<div><b>${e.Name}</b>: ${e.Message} <small>(${e.Date})</small></div>`;
+    else
+      return `<div><b>${e.Title || e.Subject}</b> — ${e.Details}, ${e.Date}</div>`;
+  }).join("");
 
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <h3>${sec.replace("_", " ")}</h3>
-      <small>${entries.length} entries</small>
-      <div class="entries">
-        ${entries.map(e => `<div>• ${e.text} (${e.date})</div>`).join("") || "No data yet."}
-      </div>
-      <br>
-      <textarea id="input_${sec}" placeholder="Enter new log..." rows="2" style="width:100%;"></textarea><br>
-      <button class="btn btn-sync" onclick="addEntry('${sec}')">Save Entry</button>
-    `;
-
-    dash.appendChild(card);
-  });
+  return `
+  <div class="card">
+    <h3>${tab.replace("_", " ")}</h3>
+    <small>${entries.length} entries</small>
+    <div class="entries">${preview || "No data yet."}</div>
+    <button onclick="showSection('${tab}')">Open</button>
+  </div>`;
 }
 
 // =============================
-// ⚓ ADD ENTRY (LOCAL + CLOUD)
+// ⚓ RENDER FORM FOR SECTION
 // =============================
-async function addEntry(section) {
-  const text = document.getElementById(`input_${section}`).value.trim();
-  if (!text) return alert("Please enter a log first.");
+function renderForm(tab) {
+  const formContainer = document.getElementById(tab);
+  if (!formContainer) return;
+  let fieldsHTML = "";
 
-  const entry = {
-    text,
-    date: new Date().toLocaleString()
-  };
+  switch (tab) {
+    case "Vessel_Join":
+    case "Arrivals":
+      fieldsHTML = `
+        <input id="Vessel" placeholder="Vessel" />
+        <input id="Port" placeholder="Port" />
+        <input id="No_of_Crew" type="number" placeholder="No of Crew" />
+        <input id="Rank" placeholder="Rank" />
+        <input id="Date" type="date" />
+        <input id="Flight" placeholder="Flight" />
+      `;
+      break;
+    case "Updates":
+    case "Memo":
+      fieldsHTML = `
+        <input id="Title" placeholder="Title" />
+        <textarea id="Details" placeholder="Details"></textarea>
+        <input id="Date" type="date" />
+      `;
+      break;
+    case "Training":
+    case "Pni":
+      fieldsHTML = `
+        <input id="Subject" placeholder="Subject" />
+        <textarea id="Details" placeholder="Details"></textarea>
+        <input id="Date" type="date" />
+      `;
+      break;
+    case "ChatBoard":
+      fieldsHTML = `
+        <input id="Name" placeholder="Your name" />
+        <textarea id="Message" placeholder="Message"></textarea>
+        <input id="Date" type="date" />
+      `;
+      break;
+  }
 
-  // Save locally
-  if (!localData[section]) localData[section] = [];
-  localData[section].push(entry);
+  formContainer.innerHTML = `
+    <h2>${tab.replace("_", " ")}</h2>
+    <form onsubmit="saveEntry(event, '${tab}')">
+      ${fieldsHTML}
+      <br><button type="submit" class="btn btn-sync">Save to Sheet</button>
+    </form>
+    <hr>
+    <button onclick="syncFromSheet()">⟳ Sync from Google Sheet</button>
+    <button onclick="clearLocal()">🧹 Clear Local</button>
+  `;
+}
+
+// =============================
+// ⚓ SAVE ENTRY
+// =============================
+async function saveEntry(event, tab) {
+  event.preventDefault();
+
+  const entry = {};
+  document.querySelectorAll(`#${tab} input, #${tab} textarea`).forEach(i => {
+    entry[i.id] = i.value.trim();
+  });
+
+  if (!entry.Date) entry.Date = new Date().toISOString().slice(0,10);
+
+  if (!localData[tab]) localData[tab] = [];
+  localData[tab].push(entry);
   localStorage.setItem("routineData", JSON.stringify(localData));
 
-  renderDashboard();
-
-  // Save to Google Sheet
   try {
     await fetch(scriptURL, {
       method: "POST",
       mode: "no-cors",
-      body: JSON.stringify({ section, ...entry }),
+      body: JSON.stringify({ tab, entry }),
       headers: { "Content-Type": "application/json" }
     });
-    alert("Saved to Google Sheet successfully!");
+    alert(`Saved to Google Sheet (${tab})`);
   } catch (e) {
-    console.warn("Offline mode - saved locally only.");
+    alert("Offline mode — saved locally only.");
   }
-
-  document.getElementById(`input_${section}`).value = "";
 }
 
 // =============================
-// ⚓ SYNC FROM SHEET (DOWNLOAD)
+// ⚓ SYNC FROM SHEET
 // =============================
 async function syncFromSheet() {
   try {
     const res = await fetch(scriptURL + "?mode=get");
     const data = await res.json();
-
     localData = data;
-    localStorage.setItem("routineData", JSON.stringify(data));
+    localStorage.setItem("routineData", JSON.stringify(localData));
     renderDashboard();
-
-    alert("Data synced from Google Sheet!");
+    alert("✅ Synced successfully from Google Sheet!");
   } catch (e) {
-    alert("Failed to sync from Sheet (check internet).");
+    alert("⚠️ Failed to sync (check your scriptURL or internet).");
   }
 }
 
 // =============================
-// ⚓ CLEAR LOCAL DATA
+// ⚓ CLEAR LOCAL
 // =============================
 function clearLocal() {
-  if (confirm("Clear local data?")) {
+  if (confirm("Clear all local stored data?")) {
     localStorage.removeItem("routineData");
     localData = {};
     renderDashboard();
   }
-}
-
-// =============================
-// ⚓ EXPORT (EXAMPLE)
-// =============================
-function generateMonthlyReport() {
-  alert("Report generation will be added next version.");
 }
 </script>
 </body>
