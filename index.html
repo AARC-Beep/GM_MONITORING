@@ -1,267 +1,180 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Daily Routine Log</title>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-
-  <style>
-    :root { --sidebar-width: 240px; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f4f6f9; }
-    .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background:#0b2a4a; color:#fff; padding:16px; overflow:auto; }
-    .sidebar a { display:block; color:#cfe8ff; padding:8px 10px; text-decoration:none; border-radius:6px; margin-bottom:6px; }
-    .sidebar a:hover, .sidebar a.active { background:#123855; color:#fff; }
-    .content { margin-left: calc(var(--sidebar-width) + 24px); padding:20px 28px; min-height:100vh; }
-    .card-slim { padding:12px; border-radius:8px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.06); margin-bottom:14px; }
-    .form-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .form-row .form-control { min-width:120px; }
-    .fixed-bottom-left { position: fixed; left: 16px; bottom: 16px; z-index: 2000; color: #666; }
-    @media (max-width:900px){ .content{ margin-left:12px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
-  </style>
-</head>
-<body>
-
-<nav class="sidebar">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — PTSC/THRI</h4>
-  <a href="#" class="active" onclick="navTo(event,'dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-  <a href="#" onclick="navTo(event,'vesselJoin')"><i class="fa-solid fa-ship"></i> Vessel Crew Joining</a>
-  <a href="#" onclick="navTo(event,'arrivingCrew')"><i class="fa-solid fa-plane-departure"></i> Arriving Crew</a>
-  <a href="#" onclick="navTo(event,'dailyUpdates')"><i class="fa-regular fa-calendar-days"></i> Daily Updates</a>
-  <a href="#" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
-  <a href="#" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
-  <a href="#" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&I / Events</a>
-</nav>
-
-<main class="content">
-  <h2>SeaCrew Dashboard</h2>
-  <p>Connected to Google Sheet: <strong>DAILY ROUTINE LOG</strong></p>
-
-  <section id="dashboard" class="section active">
-    <div class="alert alert-info">Use the sidebar to access sections. Entries auto-save to Google Sheet.</div>
-  </section>
-
-  <!-- ======== Vessel Join ======== -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <h4>Vessel Crew Joining</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="vjVessel" placeholder="Vessel">
-        <input class="form-control" id="vjPort" placeholder="Port">
-        <input class="form-control" id="vjNo" placeholder="No. of Crew" type="number">
-        <input class="form-control" id="vjRank" placeholder="Rank">
-        <input class="form-control" id="vjDate" type="date">
-        <input class="form-control" id="vjFlight" placeholder="Flight">
-        <button class="btn btn-success" onclick="saveData('Vessel_Join')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======== Arrivals ======== -->
-  <section id="arrivingCrew" class="section" style="display:none">
-    <h4>Arriving Crew</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="acVessel" placeholder="Vessel">
-        <input class="form-control" id="acPort" placeholder="Port">
-        <input class="form-control" id="acNo" placeholder="No. of Crew" type="number">
-        <input class="form-control" id="acRank" placeholder="Rank">
-        <input class="form-control" id="acDate" type="date">
-        <input class="form-control" id="acFlight" placeholder="Flight">
-        <button class="btn btn-success" onclick="saveData('Arrivals')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======== Daily Updates ======== -->
-  <section id="dailyUpdates" class="section" style="display:none">
-    <h4>Daily Updates</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="duTitle" placeholder="Title">
-        <input class="form-control" id="duDetails" placeholder="Details">
-        <input class="form-control" id="duDate" type="date">
-        <button class="btn btn-success" onclick="saveData('Updates')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======== Memo ======== -->
-  <section id="memo" class="section" style="display:none">
-    <h4>Memo</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="mTitle" placeholder="Title">
-        <input class="form-control" id="mDetails" placeholder="Details">
-        <input class="form-control" id="mDate" type="date">
-        <button class="btn btn-success" onclick="saveData('Memo')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======== Training ======== -->
-  <section id="training" class="section" style="display:none">
-    <h4>Training</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="tSubject" placeholder="Subject">
-        <input class="form-control" id="tDetails" placeholder="Details">
-        <input class="form-control" id="tDate" type="date">
-        <button class="btn btn-success" onclick="saveData('Training')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ======== P&I ======== -->
-  <section id="pni" class="section" style="display:none">
-    <h4>P&amp;I / Events</h4>
-    <div class="card-slim">
-      <div class="form-row">
-        <input class="form-control" id="pSubject" placeholder="Subject">
-        <input class="form-control" id="pDetails" placeholder="Details">
-        <input class="form-control" id="pDate" type="date">
-        <button class="btn btn-success" onclick="saveData('Pni')">Save</button>
-      </div>
-    </div>
-  </section>
-
-  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
-</main>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>THRI – Daily Routine Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwyy2tSyswRgQ-RZh_zS3e2vrH5tG-H2FB4tnUWShd-eN-sHIlaZEHeyUJHtyc82WWlA/exec";
-  async function saveData(sheetName) {
-  const data = { sheet: sheetName, timestamp: new Date().toLocaleString() };
-
-  // Collect form fields dynamically
-  document.querySelectorAll(`#${sheetName.toLowerCase()} input, #${sheetName.toLowerCase()} textarea, #${sheetName.toLowerCase()} select`)
-    .forEach(el => data[el.name] = el.value);
-
-  console.log("Data being sent:", data); // Debug log
-
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
-    showAlert(`✅ Saved to ${sheetName}`);
-  } catch (err) {
-    console.error("Error saving:", err);
-    showAlert("⚠️ Save failed!", true);
-  }
-}
-
-function showAlert(msg, err=false) {
-  const div = document.createElement("div");
-  div.textContent = msg;
-  div.style.position = "fixed";
-  div.style.top = "10px";
-  div.style.right = "10px";
-  div.style.background = err ? "#ff4d4d" : "#4CAF50";
-  div.style.color = "white";
-  div.style.padding = "10px 20px";
-  div.style.borderRadius = "5px";
-  div.style.zIndex = 9999;
-  document.body.appendChild(div);
-  setTimeout(()=>div.remove(),3000);
-}
 </script>
+</head>
 
-// Sidebar navigation
-function navTo(event, id) {
-  event.preventDefault();
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-  event.target.classList.add('active');
-  document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-  document.getElementById(id).style.display = 'block';
+<body class="bg-gray-100 font-sans">
+
+<!-- === Auto Refresh Notice === -->
+<div id="refreshNotice" 
+     style="background:#021827;color:#fff;text-align:center;padding:6px;font-size:14px;font-family:Arial;border-bottom:2px solid gold;">
+  🔄 Data automatically refreshes every <span id="refreshInterval">15</span> seconds.
+</div>
+
+<!-- === Header === -->
+<header class="bg-blue-900 text-white py-4 shadow-md">
+  <h1 class="text-center text-2xl font-bold">TIWALA HUMAN RESOURCES INC. — Manning Dashboard</h1>
+</header>
+
+<!-- === Sidebar === -->
+<div class="flex">
+  <nav class="w-64 bg-blue-800 text-white min-h-screen p-4">
+    <ul class="space-y-3">
+      <li><button onclick="showSection('vesselJoin')" class="w-full text-left">🛳 Vessel Join</button></li>
+      <li><button onclick="showSection('arrivals')" class="w-full text-left">✈ Arrivals</button></li>
+      <li><button onclick="showSection('updates')" class="w-full text-left">📰 Updates</button></li>
+      <li><button onclick="showSection('memo')" class="w-full text-left">📋 Memo</button></li>
+      <li><button onclick="showSection('training')" class="w-full text-left">🎓 Training</button></li>
+      <li><button onclick="showSection('pni')" class="w-full text-left">⚕ PNI</button></li>
+      <li><button onclick="showSection('blackboard')" class="w-full text-left">💬 Blackboard / Chat</button></li>
+    </ul>
+  </nav>
+
+  <!-- === Main Content === -->
+  <main class="flex-1 p-6">
+
+    <!-- Vessel Join -->
+    <section id="vesselJoin" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">🛳 Vessel Join</h2>
+      <form id="vesselJoinForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Vessel" name="vessel" required>
+        <input class="border p-2 w-full" placeholder="Port" name="port" required>
+        <input class="border p-2 w-full" placeholder="No. of Crew" name="noCrew" type="number">
+        <input class="border p-2 w-full" placeholder="Rank" name="rank">
+        <input class="border p-2 w-full" type="date" name="date">
+        <input class="border p-2 w-full" placeholder="Flight" name="flight">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- Arrivals -->
+    <section id="arrivals" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">✈ Arrivals</h2>
+      <form id="arrivalsForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Vessel" name="vessel">
+        <input class="border p-2 w-full" placeholder="Port" name="port">
+        <input class="border p-2 w-full" placeholder="No. of Crew" name="noCrew" type="number">
+        <input class="border p-2 w-full" placeholder="Rank" name="rank">
+        <input class="border p-2 w-full" type="date" name="date">
+        <input class="border p-2 w-full" placeholder="Flight" name="flight">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- Updates -->
+    <section id="updates" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">📰 Updates</h2>
+      <form id="updatesForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Title" name="title">
+        <textarea class="border p-2 w-full" placeholder="Details" name="details"></textarea>
+        <input class="border p-2 w-full" type="date" name="date">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- Memo -->
+    <section id="memo" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">📋 Memo</h2>
+      <form id="memoForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Title" name="title">
+        <textarea class="border p-2 w-full" placeholder="Details" name="details"></textarea>
+        <input class="border p-2 w-full" type="date" name="date">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- Training -->
+    <section id="training" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">🎓 Training</h2>
+      <form id="trainingForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Subject" name="subject">
+        <textarea class="border p-2 w-full" placeholder="Details" name="details"></textarea>
+        <input class="border p-2 w-full" type="date" name="date">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- PNI -->
+    <section id="pni" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">⚕ PNI</h2>
+      <form id="pniForm" class="space-y-2">
+        <input class="border p-2 w-full" placeholder="Subject" name="subject">
+        <textarea class="border p-2 w-full" placeholder="Details" name="details"></textarea>
+        <input class="border p-2 w-full" type="date" name="date">
+        <button type="submit" class="bg-blue-700 text-white px-4 py-2 rounded">Save</button>
+      </form>
+    </section>
+
+    <!-- Blackboard / Chat -->
+    <section id="blackboard" class="hidden">
+      <h2 class="text-xl font-semibold mb-4">💬 Blackboard / Chat</h2>
+      <textarea id="chatInput" class="border p-2 w-full h-24" placeholder="Write a note..."></textarea>
+      <button onclick="postChat()" class="bg-green-600 text-white px-4 py-2 rounded mt-2">Post</button>
+      <div id="chatBoard" class="mt-4 p-3 bg-white rounded shadow max-h-80 overflow-y-auto"></div>
+    </section>
+
+    <!-- Quick Links -->
+    <section id="quick-links" class="p-4 bg-gray-50 rounded-2xl shadow mt-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-3">🌐 Quick Links</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <a href="https://www.flightaware.com/live/airport/MNL" target="_blank" class="block text-center bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 transition">✈ FlightAware (MNL)</a>
+        <a href="https://www.msn.com/en-ph/news" target="_blank" class="block text-center bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition">📰 MSN Philippines</a>
+        <a href="https://zoom.earth/" target="_blank" class="block text-center bg-sky-600 text-white py-2 rounded-xl hover:bg-sky-700 transition">🌦 Zoom Earth (Weather)</a>
+        <a href="https://dmw.gov.ph" target="_blank" class="block text-center bg-yellow-600 text-white py-2 rounded-xl hover:bg-yellow-700 transition">🧭 DMW</a>
+        <a href="https://owwa.gov.ph" target="_blank" class="block text-center bg-orange-600 text-white py-2 rounded-xl hover:bg-orange-700 transition">🤝 OWWA</a>
+        <a href="https://marina.gov.ph" target="_blank" class="block text-center bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 transition">⚓ MARINA</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+function showSection(id){
+  document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 
-// Auto-submit function
-async function saveData(sheetName) {
-  let data = { sheet: sheetName, timestamp: new Date().toLocaleString() };
-
-  // Collect fields based on section
-  if (sheetName === 'Vessel_Join') {
-    data.vessel = document.getElementById('vjVessel').value;
-    data.port = document.getElementById('vjPort').value;
-    data.noCrew = document.getElementById('vjNo').value;
-    data.rank = document.getElementById('vjRank').value;
-    data.date = document.getElementById('vjDate').value;
-    data.flight = document.getElementById('vjFlight').value;
-  } 
-  else if (sheetName === 'Arrivals') {
-    data.vessel = document.getElementById('acVessel').value;
-    data.port = document.getElementById('acPort').value;
-    data.noCrew = document.getElementById('acNo').value;
-    data.rank = document.getElementById('acRank').value;
-    data.date = document.getElementById('acDate').value;
-    data.flight = document.getElementById('acFlight').value;
-  } 
-  else if (sheetName === 'Updates') {
-    data.title = document.getElementById('duTitle').value;
-    data.details = document.getElementById('duDetails').value;
-    data.date = document.getElementById('duDate').value;
-  } 
-  else if (sheetName === 'Memo') {
-    data.title = document.getElementById('mTitle').value;
-    data.details = document.getElementById('mDetails').value;
-    data.date = document.getElementById('mDate').value;
-  } 
-  else if (sheetName === 'Training') {
-    data.subject = document.getElementById('tSubject').value;
-    data.details = document.getElementById('tDetails').value;
-    data.date = document.getElementById('tDate').value;
-  } 
-  else if (sheetName === 'Pni') {
-    data.subject = document.getElementById('pSubject').value;
-    data.details = document.getElementById('pDetails').value;
-    data.date = document.getElementById('pDate').value;
-  }
-
-  // Auto submit immediately when clicking “Save”
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+// === Generic form posting ===
+document.querySelectorAll("form").forEach(f=>{
+  f.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(f).entries());
+    formData.sheet = f.id.replace("Form","");
+    const res = await fetch(SCRIPT_URL,{
+      method:"POST",
+      body:JSON.stringify(formData),
+      headers:{"Content-Type":"application/json"}
     });
+    const data = await res.json();
+    alert("Saved!");
+    f.reset();
+  });
+});
 
-    showAlert(`✅ Saved to "${sheetName}" sheet successfully!`);
-    clearForm(sheetName);
-  } catch (err) {
-    showAlert('⚠️ Error: Could not save. Check your Apps Script deployment.', true);
-    console.error(err);
-  }
+// === Blackboard Chat ===
+async function postChat(){
+  const txt=document.getElementById("chatInput").value.trim();
+  if(!txt)return;
+  const entry={sheet:"Memo",title:"Blackboard",details:txt,date:new Date().toISOString().split("T")[0]};
+  await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(entry),headers:{"Content-Type":"application/json"}});
+  document.getElementById("chatInput").value="";
+  loadChat();
 }
-
-// Clears form after saving
-function clearForm(sheetName) {
-  const section = document.getElementById(
-    sheetName === 'Vessel_Join' ? 'vesselJoin' :
-    sheetName === 'Arrivals' ? 'arrivingCrew' :
-    sheetName === 'Updates' ? 'dailyUpdates' :
-    sheetName === 'Memo' ? 'memo' :
-    sheetName === 'Training' ? 'training' :
-    'pni'
-  );
-  section.querySelectorAll('input').forEach(i => i.value = '');
+async function loadChat(){
+  const res=await fetch(SCRIPT_URL+"?sheet=Memo");
+  const rows=await res.json();
+  const chat=document.getElementById("chatBoard");
+  chat.innerHTML=rows.slice(1).reverse().map(r=>`<div class='border-b py-1'><b>${r[1]}</b>: ${r[2]}</div>`).join("");
 }
-
-// Popup alert
-function showAlert(message, isError = false) {
-  const div = document.createElement('div');
-  div.textContent = message;
-  div.className = `alert ${isError ? 'alert-danger' : 'alert-success'}`;
-  div.style.position = 'fixed';
-  div.style.top = '10px';
-  div.style.right = '10px';
-  div.style.zIndex = 9999;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 3000);
-}
+setInterval(()=>{loadChat();blinkNotice();},15000);
+function blinkNotice(){const n=document.getElementById("refreshNotice");n.style.background="#054d8c";setTimeout(()=>{n.style.background="#021827"},600);}
 </script>
 
 </body>
