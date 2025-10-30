@@ -300,6 +300,24 @@ window.onload = () => {
             .catch((err) => console.error("Error refreshing data:", err));
         }, 60000); // 60 seconds
       </script>
+  <script>
+// === Open buttons fix ===
+function openForm(sheet) {
+  const formURL = `${SCRIPT_URL}?sheet=${sheet}`;
+  window.open(formURL, "_blank");
+}
+
+// === Sidebar navigation fix ===
+document.querySelectorAll(".sidebar-link").forEach(link => {
+  link.addEventListener("click", e => {
+    e.preventDefault();
+    const target = link.getAttribute("data-target");
+    document.querySelectorAll(".section").forEach(sec => sec.classList.add("hidden"));
+    document.getElementById(target).classList.remove("hidden");
+  });
+});
+</script>
+
 
       <!-- Blackboard / Chat Feature -->
       <section id="blackboard" class="mt-10 p-6 bg-gray-900 text-white rounded-2xl shadow-lg">
