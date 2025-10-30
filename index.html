@@ -1,374 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SeaCrew Dashboard — PTSC / THRI</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SeaCrew Daily Routine Log</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      background-color: #f8f9fa;
+      background: #f4f6f8;
     }
-    .sidebar {
-      width: 230px;
+    #sidebar {
+      width: 240px;
       position: fixed;
-      top: 0; left: 0;
-      height: 100vh;
-      background-color: #0a2342;
-      color: #fff;
-      padding-top: 1rem;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background: #0d1b2a;
+      color: white;
+      padding: 20px 0;
     }
-    .sidebar h4 {
+    #sidebar h4 {
       text-align: center;
-      margin-bottom: 1rem;
       color: #fff;
+      margin-bottom: 20px;
     }
-    .sidebar a {
-      color: #fff;
+    #sidebar a {
+      color: #cdd9e5;
       display: block;
       padding: 10px 20px;
       text-decoration: none;
     }
-    .sidebar a:hover {
-      background-color: #003366;
+    #sidebar a:hover, #sidebar a.active {
+      background: #1b263b;
+      color: #fff;
     }
-    .main {
-      margin-left: 240px;
-      padding: 1.5rem;
+    #content {
+      margin-left: 260px;
+      padding: 20px;
     }
-    .card {
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border-radius: 10px;
+    .section {
+      display: none;
     }
-    .sticky-note {
-      background: #fff8dc;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-      min-height: 100px;
-      resize: none;
-      width: 100%;
+    .section.active {
+      display: block;
     }
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <h4>🛳 SeaCrew<br>PTSC / THRI</h4>
-    <a href="#">Dashboard</a>
-    <a href="#">Vessel Crew Joining</a>
-    <a href="#">Arriving Crew</a>
-    <a href="#">Daily Updates</a>
-    <a href="#">Memo</a>
-    <a href="#">Training</a>
-    <a href="#">P&I / Events</a>
-    <hr style="border-color:#fff;">
-    <a href="https://flightaware.com/live/airport/RPLL" target="_blank">✈ Flights — FlightAware (MNL)</a>
-    <a href="https://www.msn.com/en-ph/news" target="_blank">📰 News — MSN Philippines</a>
-    <a href="https://zoom.earth/" target="_blank">🌦 Weather — Zoom Earth</a>
-    <a href="https://dmw.gov.ph" target="_blank">🏛 DMW — Dept. of Migrant Workers</a>
-    <a href="https://owwa.gov.ph" target="_blank">🧳 OWWA — Overseas Workers Welfare Admin</a>
-    <a href="https://marina.gov.ph" target="_blank">⚓ MARINA — Maritime Industry Authority</a>
+  <div id="sidebar">
+    <h4>🛳 SeaCrew Log</h4>
+    <a href="#" class="nav-link active" data-section="join">Vessel Crew Joining</a>
+    <a href="#" class="nav-link" data-section="arrivals">Arriving Crew</a>
+    <a href="#" class="nav-link" data-section="updates">Daily Updates</a>
+    <a href="#" class="nav-link" data-section="memo">Memo</a>
+    <a href="#" class="nav-link" data-section="training">Training</a>
+    <a href="#" class="nav-link" data-section="pni">P&I / Events</a>
   </div>
-  <div class="main">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3>SeaCrew Dashboard</h3>
-      <div>
-        <button class="btn btn-primary btn-sm" id="syncBtn">🔄 Sync from Sheet</button>
-        <button class="btn btn-danger btn-sm" id="clearLocal">🗑 Clear Local</button>
-      </div>
-    </div>
-    <div class="row" id="dashboard-cards">
-      <!-- Vessel Crew Joining -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">Vessel Crew Joining</h6>
-            <p class="text-muted" id="joinCount">0 entries</p>
-            <div id="joinList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Vessel_Join')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Vessel_Join')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Arriving Crew -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">Arriving Crew</h6>
-            <p class="text-muted" id="arriveCount">0 entries</p>
-            <div id="arriveList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Arrivals')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Arrivals')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
+  <div id="content">
+    <h2>Daily Routine Log Dashboard</h2>
+    <p>Connected to Google Sheet: <strong>SeaCrewDB</strong></p>
 
-      <!-- Daily Updates -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">Daily Updates</h6>
-            <p class="text-muted" id="updateCount">0 entries</p>
-            <div id="updateList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Updates')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Updates')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Memo -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">Memo</h6>
-            <p class="text-muted" id="memoCount">0 entries</p>
-            <div id="memoList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Memo')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Memo')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Training -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">Training</h6>
-            <p class="text-muted" id="trainCount">0 entries</p>
-            <div id="trainList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Training')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Training')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- P&I / Events -->
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <h6 class="card-title">P&amp;I / Events</h6>
-            <p class="text-muted" id="pniCount">0 entries</p>
-            <div id="pniList"></div>
-            <div class="d-flex justify-content-between mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openForm('Pni')">Open</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="exportPDF('Pni')">Export PDF</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Blackboard / Chat Sticky Note -->
-    <div class="card mt-4">
-      <div class="card-body">
-        <h6 class="card-title">📝 Blackboard / Sticky Note</h6>
-        <textarea id="stickyNote" class="sticky-note" placeholder="Type notes here..."></textarea>
-        <button class="btn btn-success btn-sm mt-2" id="saveNote">Save Note</button>
-        <button class="btn btn-secondary btn-sm mt-2" id="clearNote">Clear Note</button>
-      </div>
-    </div>
-
-    <footer class="mt-4 text-muted text-center small">
-      Connected to Google Sheet via Apps Script API<br>
-      © 2025 TIWALA Human Resources Inc.
-    </footer>
+    <div id="join" class="section active"></div>
+    <div id="arrivals" class="section"></div>
+    <div id="updates" class="section"></div>
+    <div id="memo" class="section"></div>
+    <div id="training" class="section"></div>
+    <div id="pni" class="section"></div>
   </div>
-<script>
-// === CONFIGURATION ===
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwyy2tSyswRgQ-RZh_zS3e2vrH5tG-H2FB4tnUWShd-eN-sHIlaZEHeyUJHtyc82WWlA/exec";
-
-// === FETCH DATA FROM GOOGLE SHEET ===
-async function fetchData(sheetName, listId, countId) {
-  try {
-    const response = await fetch(`${SCRIPT_URL}?sheet=${sheetName}`);
-    const data = await response.json();
-
-    if (data && data.length > 1) {
-      document.getElementById(countId).innerText = `${data.length - 1} entries`;
-      renderList(data.slice(1), listId);
-    } else {
-      document.getElementById(countId).innerText = `0 entries`;
-      document.getElementById(listId).innerHTML = `<p class="text-muted">No data available</p>`;
-    }
-  } catch (err) {
-    console.error(`Error fetching ${sheetName}:`, err);
-    document.getElementById(listId).innerHTML = `<p class="text-danger">Failed to load data.</p>`;
-  }
-}
-
-// === DISPLAY LISTS IN DASHBOARD ===
-function renderList(rows, listId) {
-  let html = "";
-  rows.reverse().forEach(r => {
-    const text = r.filter(Boolean).slice(1).join(" — ");
-    html += `<div>${text}</div>`;
-  });
-  document.getElementById(listId).innerHTML = html || `<p>No records yet.</p>`;
-}
-
-// === EXPORT TO PDF ===
-function exportPDF(sheetName) {
-  const list = document.getElementById(sheetName.toLowerCase().replace("_", "") + "List").innerHTML;
-  const pdfWindow = window.open("", "_blank");
-  pdfWindow.document.write(`<html><head><title>${sheetName} Report</title></head><body>${list}</body></html>`);
-  pdfWindow.document.close();
-  pdfWindow.print();
-}
-
-// === OPEN FORM ===
-function openForm(sheet) {
-  const url = `${SCRIPT_URL}?sheet=${sheet}`;
-  window.open(url, "_blank");
-}
-
-// === AUTO REFRESH EVERY 30 SECONDS ===
-function autoRefresh() {
-  fetchAllData();
-  setTimeout(autoRefresh, 30000);
-}
-
-// === FETCH ALL SHEETS ===
-function fetchAllData() {
-  fetchData("Vessel_Join", "joinList", "joinCount");
-  fetchData("Arrivals", "arriveList", "arriveCount");
-  fetchData("Updates", "updateList", "updateCount");
-  fetchData("Memo", "memoList", "memoCount");
-  fetchData("Training", "trainList", "trainCount");
-  fetchData("Pni", "pniList", "pniCount");
-}
-
-// === STICKY NOTE FEATURE ===
-const noteField = document.getElementById("stickyNote");
-const saveBtn = document.getElementById("saveNote");
-const clearBtn = document.getElementById("clearNote");
-
-noteField.value = localStorage.getItem("stickyNote") || "";
-
-saveBtn.addEventListener("click", () => {
-  localStorage.setItem("stickyNote", noteField.value);
-  saveBtn.innerText = "Saved!";
-  setTimeout(() => saveBtn.innerText = "Save Note", 2000);
-});
-
-clearBtn.addEventListener("click", () => {
-  localStorage.removeItem("stickyNote");
-  noteField.value = "";
-});
-
-// === INITIAL LOAD ===
-window.onload = () => {
-  fetchAllData();
-  autoRefresh();
-};
-</script>
-      <!-- Auto Refresh Function -->
-      <script>
-        // Refresh every 60 seconds
-        setInterval(() => {
-          fetch(
-            "https://script.google.com/macros/s/AKfycbxwyy2tSyswRgQ-RZh_zS3e2vrH5tG-H2FB4tnUWShd-eN-sHIlaZEHeyUJHtyc82WWlA/exec"
-          )
-            .then((response) => response.json())
-            .then((data) => {
-              const tableBody = document.querySelector("#crewTable tbody");
-              tableBody.innerHTML = "";
-              data.forEach((crew) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                  <td>${crew.Rank || ""}</td>
-                  <td>${crew.Name || ""}</td>
-                  <td>${crew.Principal || ""}</td>
-                  <td>${crew.Status || ""}</td>
-                  <td>${crew.Remarks || ""}</td>
-                `;
-                tableBody.appendChild(row);
-              });
-            })
-            .catch((err) => console.error("Error refreshing data:", err));
-        }, 60000); // 60 seconds
-      </script>
   <script>
-// === Open buttons fix ===
-function openForm(sheet) {
-  const formURL = `${SCRIPT_URL}?sheet=${sheet}`;
-  window.open(formURL, "_blank");
-}
+  const scriptURL = "https://script.google.com/macros/s/AKfycbxwyy2tSyswRgQ-RZh_zS3e2vrH5tG-H2FB4tnUWShd-eN-sHIlaZEHeyUJHtyc82WWlA/exec";
 
-// === Sidebar navigation fix ===
-document.querySelectorAll(".sidebar-link").forEach(link => {
-  link.addEventListener("click", e => {
-    e.preventDefault();
-    const target = link.getAttribute("data-target");
-    document.querySelectorAll(".section").forEach(sec => sec.classList.add("hidden"));
-    document.getElementById(target).classList.remove("hidden");
+  const sections = ["join", "arrivals", "updates", "memo", "training", "pni"];
+  const sectionNames = {
+    join: "Vessel Crew Joining",
+    arrivals: "Arriving Crew",
+    updates: "Daily Updates",
+    memo: "Memo",
+    training: "Training",
+    pni: "P&I / Events"
+  };
+
+  // ===== Navigation =====
+  document.querySelectorAll(".nav-link").forEach(link => {
+    link.addEventListener("click", e => {
+      e.preventDefault();
+      document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
+      link.classList.add("active");
+      const target = link.dataset.section;
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.getElementById(target).classList.add("active");
+    });
   });
-});
-</script>
 
+  // ===== Build forms dynamically =====
+  sections.forEach(id => {
+    const container = document.getElementById(id);
+    container.innerHTML = `
+      <div class="card shadow-sm p-4">
+        <h4>${sectionNames[id]}</h4>
+        <form class="entryForm" data-sheet="${id}">
+          <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" name="Date" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Details / Remarks</label>
+            <textarea class="form-control" name="Details" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Entered By</label>
+            <input type="text" class="form-control" name="User" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Entry</button>
+          <div class="status mt-3 text-success fw-bold"></div>
+        </form>
+      </div>
+    `;
+  });
 
-      <!-- Blackboard / Chat Feature -->
-      <section id="blackboard" class="mt-10 p-6 bg-gray-900 text-white rounded-2xl shadow-lg">
-        <h2 class="text-xl font-bold mb-4">📋 Crew Blackboard</h2>
-        <div class="space-y-3" id="chatArea">
-          <!-- Messages will appear here -->
-        </div>
+  // ===== Handle form submission =====
+  document.querySelectorAll(".entryForm").forEach(form => {
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const sheetName = form.dataset.sheet;
+      const formData = new FormData(form);
+      formData.append("sheetName", sheetName);
 
-        <div class="mt-4 flex space-x-2">
-          <input
-            type="text"
-            id="chatInput"
-            placeholder="Type message here..."
-            class="flex-1 p-2 rounded-lg text-black"
-          />
-          <button
-            id="sendBtn"
-            class="bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Send
-          </button>
-        </div>
-      </section>
+      const data = Object.fromEntries(formData.entries());
+      const localKey = "local_" + sheetName;
 
-      <script>
-        const chatArea = document.getElementById("chatArea");
-        const sendBtn = document.getElementById("sendBtn");
-        const chatInput = document.getElementById("chatInput");
+      // Save locally (always)
+      let stored = JSON.parse(localStorage.getItem(localKey) || "[]");
+      stored.push(data);
+      localStorage.setItem(localKey, JSON.stringify(stored));
 
-        function addMessage(text) {
-          const msg = document.createElement("div");
-          msg.className =
-            "bg-gray-800 p-2 rounded-lg shadow-sm border border-gray-700";
-          msg.textContent = text;
-          chatArea.appendChild(msg);
-          chatArea.scrollTop = chatArea.scrollHeight;
-        }
+      // Try sending to Google Sheets
+      fetch(scriptURL, { method: "POST", body: formData })
+        .then(res => res.text())
+        .then(result => {
+          form.querySelector(".status").innerHTML = "✅ Saved to Google Sheets!";
+          form.reset();
+          // Clear local if success
+          localStorage.removeItem(localKey);
+        })
+        .catch(err => {
+          console.log("Offline or error, saved locally:", err);
+          form.querySelector(".status").innerHTML = "⚠️ Offline — saved locally, will sync later.";
+        });
+    });
+  });
 
-        sendBtn.addEventListener("click", () => {
-          const text = chatInput.value.trim();
-          if (text) {
-            addMessage("🧑‍✈️ " + text);
-            chatInput.value = "";
+  // ===== Sync local data when back online =====
+  window.addEventListener("online", () => {
+    sections.forEach(sheet => {
+      const localKey = "local_" + sheet;
+      const unsynced = JSON.parse(localStorage.getItem(localKey) || "[]");
+      if (unsynced.length > 0) {
+        unsynced.forEach(entry => {
+          const fd = new FormData();
+          Object.entries(entry).forEach(([k, v]) => fd.append(k, v));
+          fd.append("sheetName", sheet);
+          fetch(scriptURL, { method: "POST", body: fd })
+            .then(() => console.log(`✅ Synced ${sheet} entry`))
+            .then(() => localStorage.removeItem(localKey))
+            .catch(err => console.log("Sync error:", err));
+        });
+      }
+    });
+  });
+    <script>
+  // === FETCH DATA FROM GOOGLE SHEETS AND DISPLAY IN TABLE ===
+  const fetchDataBtn = document.createElement("button");
+  fetchDataBtn.textContent = "🔄 Refresh Data";
+  fetchDataBtn.className = "btn btn-success mt-3";
+  document.querySelector(".main-content").prepend(fetchDataBtn);
+
+  fetchDataBtn.addEventListener("click", loadAllData);
+
+  function loadAllData() {
+    sections.forEach(sheet => {
+      const container = document.getElementById(sheet);
+      fetch(`${scriptURL}?action=read&sheetName=${sheet}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) {
+            container.querySelector(".dataTable")?.remove();
+            return;
           }
-        });
 
-        chatInput.addEventListener("keypress", (e) => {
-          if (e.key === "Enter") sendBtn.click();
-        });
-      </script>
-    </div>
-  </body>
+          // Remove old table if exists
+          container.querySelector(".dataTable")?.remove();
+
+          // Create new table
+          const table = document.createElement("table");
+          table.className = "table table-striped mt-4 dataTable";
+          const thead = document.createElement("thead");
+          const headers = Object.keys(data[0]);
+          thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>`;
+          const tbody = document.createElement("tbody");
+          data.forEach(row => {
+            tbody.innerHTML += `<tr>${headers.map(h => `<td>${row[h] || ""}</td>`).join("")}</tr>`;
+          });
+          table.appendChild(thead);
+          table.appendChild(tbody);
+          container.appendChild(table);
+        })
+        .catch(err => console.log(`Error loading ${sheet}:`, err));
+    });
+  }
+
+  // Auto load on start
+  loadAllData();
+  
+  </script>
+</body>
 </html>
-
