@@ -128,36 +128,35 @@
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <h2>⚓ SeaCrew — PTSC/THRI</h2>
-    <a href="#">Dashboard</a>
-    <a href="#">Vessel Crew Joining</a>
-    <a href="#">Arriving Crew</a>
-    <a href="#">Daily Updates</a>
-    <a href="#">Memo</a>
-    <a href="#">Training</a>
-    <a href="#">P&I / Events</a>
-    <hr />
-    <a href="#">Flights — FlightAware (MNL)</a>
-    <a href="#">News — MSN Philippines</a>
-    <a href="#">Weather — PAGASA</a>
-    <a href="#">DMW — Dept. of Migrant Workers</a>
-    <a href="#">OWWA — Overseas Workers Welfare Admin</a>
-    <a href="#">MARINA — Maritime Industry Authority</a>
-  </div>
+ <div class="sidebar">
+  <h3>⚓ SeaCrew — PTSC/THRI</h3>
+  <a href="#" data-section="Dashboard">Dashboard</a>
+  <a href="#" data-section="Vessel_Join">Vessel Crew Joining</a>
+  <a href="#" data-section="Arrivals">Arriving Crew</a>
+  <a href="#" data-section="Updates">Daily Updates</a>
+  <a href="#" data-section="Memo">Memo</a>
+  <a href="#" data-section="Training">Training</a>
+  <a href="#" data-section="Pni">P&I / Events</a>
+  <hr>
+  <a href="https://flightaware.com/live/airport/RPLL" target="_blank">Flights — FlightAware (MNL)</a>
+  <a href="https://www.msn.com/en-ph/news" target="_blank">News — MSN Philippines</a>
+  <a href="https://www.pagasa.dost.gov.ph/" target="_blank">Weather — PAGASA</a>
+  <a href="https://dmw.gov.ph/" target="_blank">DMW — Dept. of Migrant Workers</a>
+  <a href="https://owwa.gov.ph/" target="_blank">OWWA — Overseas Workers Welfare Admin</a>
+  <a href="https://marina.gov.ph/" target="_blank">MARINA — Maritime Industry Authority</a>
+</div>
 
-  <div class="main">
-    <header>
-      <div>
-        <h1>SeaCrew Dashboard</h1>
-        <small>Connected to Google Sheet: <b>DAILY ROUTINE LOG</b></small>
-      </div>
-      <div>
-        <button class="btn btn-sync" onclick="syncFromSheet()">🔄 Sync from Sheet</button>
-        <button class="btn btn-clear" onclick="clearLocal()">🧹 Clear Local</button>
-        <button class="btn btn-report" onclick="generateMonthlyReport()">📘 Monthly Report (PDF)</button>
-      </div>
-    </header>
+  <div id="main">
+  <div id="Dashboard" class="main-section"></div>
+  <div id="Vessel_Join" class="main-section" style="display:none;"></div>
+  <div id="Arrivals" class="main-section" style="display:none;"></div>
+  <div id="Updates" class="main-section" style="display:none;"></div>
+  <div id="Memo" class="main-section" style="display:none;"></div>
+  <div id="Training" class="main-section" style="display:none;"></div>
+  <div id="Pni" class="main-section" style="display:none;"></div>
+</div>
+
+</header>
 
     <div class="grid" id="dashboard">
       <!-- Cards dynamically load here -->
@@ -172,8 +171,8 @@
 // =============================
 // ⚓ CONFIGURATION
 // =============================
-const scriptURL = "https://script.google.com/macros/s/AKfycbwRV0W3veOd81I8XFf4NH3DRXV1_yClB7X2MZorSlFWUJiG0878K4ClpAmjP1DLeRRoBQ/exec"; // <-- Replace with your Google Apps Script Web App URL
-const sheetTabs = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni", "ChatBoard"];
+const scriptURL = "https://script.google.com/macros/s/AKfycbwJ-QERqA2-s48nxw1kcnsKgEj_LKPDIds60xU7WqvW057WqgM_3KifPruYEJq8SDNayg/exec"; // Replace with your Google Apps Script Web App URL
+const sheetTabs = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni"];
 let localData = JSON.parse(localStorage.getItem("routineData") || "{}");
 let activeSection = "Dashboard";
 
@@ -181,42 +180,40 @@ let activeSection = "Dashboard";
 // ⚓ INITIALIZATION
 // =============================
 document.addEventListener("DOMContentLoaded", () => {
-  attachSidebarEvents();
-  showSection("Dashboard");
-  renderDashboard();
-});
-
-// =============================
-// ⚓ SIDEBAR NAVIGATION
-// =============================
-function attachSidebarEvents() {
-  document.querySelectorAll(".sidebar a").forEach(link => {
-    link.addEventListener("click", (e) => {
+  document.querySelectorAll(".sidebar a[data-section]").forEach(link => {
+    link.addEventListener("click", e => {
       e.preventDefault();
       const section = e.target.getAttribute("data-section");
       showSection(section);
     });
   });
-}
+  showSection("Dashboard");
+});
 
+// =============================
+// ⚓ SECTION HANDLER
+// =============================
 function showSection(section) {
   activeSection = section;
   document.querySelectorAll(".main-section").forEach(s => s.style.display = "none");
   const target = document.getElementById(section);
   if (target) target.style.display = "block";
+
   if (section === "Dashboard") renderDashboard();
   else renderForm(section);
 }
 
 // =============================
-// ⚓ RENDER DASHBOARD
+// ⚓ DASHBOARD RENDER
 // =============================
 function renderDashboard() {
   const dash = document.getElementById("Dashboard");
   dash.innerHTML = `
     <h2>SeaCrew Dashboard</h2>
-    <small>Connected to Google Sheet: <b>DAILY ROUTINE LOG</b></small><br><br>
-    ${sheetTabs.map(tab => renderCard(tab)).join("")}
+    <p><small>Connected to Google Sheet: <b>DAILY ROUTINE LOG</b></small></p>
+    <div class="grid">
+      ${sheetTabs.map(tab => renderCard(tab)).join("")}
+    </div>
   `;
 }
 
@@ -224,63 +221,51 @@ function renderCard(tab) {
   const entries = localData[tab] || [];
   const preview = entries.slice(-3).map(e => {
     if (tab === "Vessel_Join" || tab === "Arrivals")
-      return `<div><b>${e.Vessel}</b> — ${e.Port}, ${e.No_of_Crew} crew, ${e.Rank}, ${e.Date}, ${e.Flight}</div>`;
-    else if (tab === "ChatBoard")
-      return `<div><b>${e.Name}</b>: ${e.Message} <small>(${e.Date})</small></div>`;
+      return `<div><b>${e.Vessel}</b> — ${e.Port}, ${e.No_of_Crew} crew, ${e.Rank}, ${e.Date}</div>`;
     else
       return `<div><b>${e.Title || e.Subject}</b> — ${e.Details}, ${e.Date}</div>`;
   }).join("");
-
   return `
   <div class="card">
     <h3>${tab.replace("_", " ")}</h3>
     <small>${entries.length} entries</small>
-    <div class="entries">${preview || "No data yet."}</div>
+    <div>${preview || "No data yet."}</div>
     <button onclick="showSection('${tab}')">Open</button>
   </div>`;
 }
 
 // =============================
-// ⚓ RENDER FORM FOR SECTION
+// ⚓ FORM RENDER
 // =============================
 function renderForm(tab) {
   const formContainer = document.getElementById(tab);
-  if (!formContainer) return;
-  let fieldsHTML = "";
-
-  switch (tab) {
+  let fields = "";
+  switch(tab) {
     case "Vessel_Join":
     case "Arrivals":
-      fieldsHTML = `
-        <input id="Vessel" placeholder="Vessel" />
-        <input id="Port" placeholder="Port" />
-        <input id="No_of_Crew" type="number" placeholder="No of Crew" />
-        <input id="Rank" placeholder="Rank" />
-        <input id="Date" type="date" />
-        <input id="Flight" placeholder="Flight" />
+      fields = `
+        <input id="Vessel" placeholder="Vessel">
+        <input id="Port" placeholder="Port">
+        <input id="No_of_Crew" placeholder="No_of_Crew" type="number">
+        <input id="Rank" placeholder="Rank">
+        <input id="Date" type="date">
+        <input id="Flight" placeholder="Flight">
       `;
       break;
     case "Updates":
     case "Memo":
-      fieldsHTML = `
-        <input id="Title" placeholder="Title" />
+      fields = `
+        <input id="Title" placeholder="Title">
         <textarea id="Details" placeholder="Details"></textarea>
-        <input id="Date" type="date" />
+        <input id="Date" type="date">
       `;
       break;
     case "Training":
     case "Pni":
-      fieldsHTML = `
-        <input id="Subject" placeholder="Subject" />
+      fields = `
+        <input id="Subject" placeholder="Subject">
         <textarea id="Details" placeholder="Details"></textarea>
-        <input id="Date" type="date" />
-      `;
-      break;
-    case "ChatBoard":
-      fieldsHTML = `
-        <input id="Name" placeholder="Your name" />
-        <textarea id="Message" placeholder="Message"></textarea>
-        <input id="Date" type="date" />
+        <input id="Date" type="date">
       `;
       break;
   }
@@ -288,12 +273,12 @@ function renderForm(tab) {
   formContainer.innerHTML = `
     <h2>${tab.replace("_", " ")}</h2>
     <form onsubmit="saveEntry(event, '${tab}')">
-      ${fieldsHTML}
-      <br><button type="submit" class="btn btn-sync">Save to Sheet</button>
+      ${fields}
+      <br>
+      <button type="submit">Save to Sheet</button>
     </form>
-    <hr>
-    <button onclick="syncFromSheet()">⟳ Sync from Google Sheet</button>
-    <button onclick="clearLocal()">🧹 Clear Local</button>
+    <button onclick="syncFromSheet()">Sync from Google Sheet</button>
+    <button onclick="clearLocal()">Clear Local</button>
   `;
 }
 
@@ -302,14 +287,12 @@ function renderForm(tab) {
 // =============================
 async function saveEntry(event, tab) {
   event.preventDefault();
-
   const entry = {};
-  document.querySelectorAll(`#${tab} input, #${tab} textarea`).forEach(i => {
-    entry[i.id] = i.value.trim();
+  document.querySelectorAll(`#${tab} input, #${tab} textarea`).forEach(el => {
+    entry[el.id] = el.value.trim();
   });
 
   if (!entry.Date) entry.Date = new Date().toISOString().slice(0,10);
-
   if (!localData[tab]) localData[tab] = [];
   localData[tab].push(entry);
   localStorage.setItem("routineData", JSON.stringify(localData));
@@ -321,9 +304,9 @@ async function saveEntry(event, tab) {
       body: JSON.stringify({ tab, entry }),
       headers: { "Content-Type": "application/json" }
     });
-    alert(`Saved to Google Sheet (${tab})`);
-  } catch (e) {
-    alert("Offline mode — saved locally only.");
+    alert(`✅ Saved to Google Sheet (${tab})`);
+  } catch (err) {
+    alert("⚠️ Offline: saved locally only.");
   }
 }
 
@@ -337,14 +320,14 @@ async function syncFromSheet() {
     localData = data;
     localStorage.setItem("routineData", JSON.stringify(localData));
     renderDashboard();
-    alert("✅ Synced successfully from Google Sheet!");
-  } catch (e) {
-    alert("⚠️ Failed to sync (check your scriptURL or internet).");
+    alert("✅ Synced from Google Sheet!");
+  } catch (err) {
+    alert("❌ Sync failed — check your Web App URL or internet.");
   }
 }
 
 // =============================
-// ⚓ CLEAR LOCAL
+// ⚓ CLEAR LOCAL STORAGE
 // =============================
 function clearLocal() {
   if (confirm("Clear all local stored data?")) {
@@ -354,5 +337,6 @@ function clearLocal() {
   }
 }
 </script>
+
 </body>
 </html>
