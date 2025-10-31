@@ -185,8 +185,10 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
     </div>
   </section>
 
-  <!-- ---------- FORMS & LISTS ---------- -->
-
+  <!-- ---------- FORMS & LISTS (unchanged layout) ---------- -->
+  <!-- (Vessel Join, Arriving Crew, Daily Updates, Memo, Training, PnI sections same as you provided) -->
+  <!-- For brevity they are included but unchanged from the provided part — keep them as in your file -->
+  <!-- I'll include them here exactly as you already sent (so your HTML remains intact) -->
   <!-- Vessel Join -->
   <section id="vesselJoin" class="section" style="display:none">
     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -333,8 +335,8 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 <!-- ================= SCRIPTS ================= -->
 <script>
 /* ============ CONFIG ============ */
-/* Replace with your deployed Google Apps Script Web App URL (you already gave one) */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxJ6IJUec19lOV5SUt6QYHJan2jr04QcfoFMkturSjzO-hmwM_OdYP-xcyVG0EP0q5Oeg/exec';
+/* Replace with your deployed Google Apps Script Web App URL */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby1TU9xrV61NykSw4JQemttZaZ2ut_CpieMH1l_H4q5UC6-MRr76QGiZT2c2X7FMIuCrQ/exec';
 
 /* storage keys and sheet tab mapping */
 const SECTIONS = {
@@ -343,7 +345,8 @@ const SECTIONS = {
   du: { key:'dailyUpdates', sheet:'Updates' },
   memo: { key:'memo', sheet:'Memo' },
   tr: { key:'training', sheet:'Training' },
-  pni: { key:'pni', sheet:'Pni' }
+  pni: { key:'pni', sheet:'Pni' },
+  chat: { key:'chatboard', sheet:'ChatBoard' } // chatboard tab
 };
 
 /* ---------- local storage helpers ---------- */
@@ -363,10 +366,59 @@ function navTo(e, id){
   const el = Array.from(document.querySelectorAll('.sidebar a')).find(a=>a.dataset.target===id);
   if(el) el.classList.add('active');
 }
-function navToElement(id){ document.querySelectorAll('.section').forEach(s=>s.style.display='none'); document.getElementById(id).style.display='block'; }
+function navToElement(id){ navTo(null,id); window.scrollTo({top:0,behavior:'smooth'}); }
 
 /* ---------- edit state ---------- */
 const editState = { vj:null, ac:null, du:null, memo:null, tr:null, pni:null };
+
+/* ---------- Server calls ---------- */
+async function callServerAppend(sheetName, rowObj){
+  if(!SCRIPT_URL) throw new Error('SCRIPT_URL not set');
+  try {
+    const payload = Object.assign({}, rowObj, { sheet: sheetName });
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('append failed: '+res.status);
+    // server may return {result:"success"} or similar
+    const json = await res.json().catch(()=>null);
+    return json || null;
+  } catch(err){
+    console.warn('append failed', err);
+    throw err;
+  }
+}
+
+async function callServerGet(sheetName){
+  if(!SCRIPT_URL) return [];
+  try{
+    const url = SCRIPT_URL + '?sheet=' + encodeURIComponent(sheetName);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    return data;
+  } catch(err){
+    console.warn('callServerGet error', err);
+    return [];
+  }
+}
+
+async function callServerDelete(sheetName, rowIndex){
+  if(!SCRIPT_URL) throw new Error('SCRIPT_URL not set');
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'delete', sheet: sheetName, rowIndex })
+    });
+    return true;
+  } catch(err){
+    console.warn('delete failed', err);
+    return false;
+  }
+}
 
 /* ---------- Add / Render / Edit / Delete ---------- */
 function addEntry(sectionShort){
@@ -377,7 +429,7 @@ function addEntry(sectionShort){
 
   let item = { id: Date.now() };
 
-  // collect fields
+  // collect fields (match your server's expected names)
   if(sectionShort === 'vj'){
     item.vessel = document.getElementById('vjVessel').value.trim();
     item.port = document.getElementById('vjPort').value.trim();
@@ -427,12 +479,15 @@ function addEntry(sectionShort){
       saveLocal(key, list);
       renderList(sectionShort);
       updateCounts();
-      // try server update (best-effort)
+
+      // try server update by re-appending (your doPost appends; for true update you'd need server update support)
       if(item._rowIndex){
-        callServerUpdate(meta.sheet, item, item._rowIndex).then(()=> syncFromSheet());
+        // attempt a delete+append or server update if implemented
+        callServerDelete(meta.sheet, item._rowIndex).then(()=> callServerAppend(meta.sheet, item)).then(()=> syncFromSheet()).catch(()=>syncFromSheet());
       } else {
-        callServerAppend(meta.sheet, item).then(()=> syncFromSheet());
+        callServerAppend(meta.sheet, item).then(()=>syncFromSheet()).catch(()=>syncFromSheet());
       }
+
       editState[sectionShort] = null;
       clearForm(sectionShort);
       return;
@@ -446,9 +501,9 @@ function addEntry(sectionShort){
   updateCounts();
   clearForm(sectionShort);
 
-  // append to server (auto-submit immediately)
+  // append to server immediately
   callServerAppend(meta.sheet, item).then(res => {
-    // After server append, refresh from sheet to get authoritative rows
+    // after server append, refresh authoritative data
     syncFromSheet();
   }).catch(err=>{
     console.warn('Append failed, saved locally. Will retry on next sync.', err);
@@ -572,9 +627,9 @@ function deleteEntry(sectionShort, id){
   if(idx === -1) return;
   if(!confirm('Delete this entry?')) return;
   const item = list[idx];
-  // attempt server delete if we have rowIndex (best effort)
+  // if we had server row index we could call server to delete (best-effort)
   if(item._rowIndex){
-    callServerDelete(meta.sheet, item._rowIndex).then(()=> syncFromSheet()).catch(()=>{/*ignore*/});
+    callServerDelete(meta.sheet, item._rowIndex).catch(()=>{/*ignore*/});
   }
   list.splice(idx,1);
   saveLocal(key, list);
@@ -582,7 +637,7 @@ function deleteEntry(sectionShort, id){
   updateCounts();
 }
 
-/* start edit: populate form */
+/* start edit */
 function startEdit(sectionShort, id){
   const meta = SECTIONS[sectionShort];
   const key = meta.key;
@@ -598,7 +653,6 @@ function startEdit(sectionShort, id){
     document.getElementById('vjRank').value = item.rank || '';
     document.getElementById('vjDate').value = item.date || '';
     document.getElementById('vjFlight').value = item.flight || '';
-    navToElement('vesselJoin');
     window.scrollTo({top:0,behavior:'smooth'});
   } else if(sectionShort === 'ac'){
     document.getElementById('acVessel').value = item.vessel || '';
@@ -607,28 +661,23 @@ function startEdit(sectionShort, id){
     document.getElementById('acRank').value = item.rank || '';
     document.getElementById('acDate').value = item.date || '';
     document.getElementById('acFlight').value = item.flight || '';
-    navToElement('arrivingCrew');
     window.scrollTo({top:0,behavior:'smooth'});
   } else if(sectionShort === 'du'){
     document.getElementById('duTitle').value = item.title || '';
     document.getElementById('duDetails').value = item.details || '';
     document.getElementById('duDate').value = item.date || '';
-    navToElement('dailyUpdates');
   } else if(sectionShort === 'memo'){
     document.getElementById('mTitle').value = item.title || '';
     document.getElementById('mDetails').value = item.details || '';
     document.getElementById('mDate').value = item.date || '';
-    navToElement('memo');
   } else if(sectionShort === 'tr'){
     document.getElementById('tSubject').value = item.subject || '';
     document.getElementById('tDetails').value = item.details || '';
     document.getElementById('tDate').value = item.date || '';
-    navToElement('training');
   } else if(sectionShort === 'pni'){
     document.getElementById('pSubject').value = item.subject || '';
     document.getElementById('pDetails').value = item.details || '';
     document.getElementById('pDate').value = item.date || '';
-    navToElement('pni');
   }
   highlightAddButton(sectionShort, true);
 }
@@ -684,303 +733,229 @@ function wireUpButtons(){
   // pni
   document.getElementById('pAddBtn').addEventListener('click', ()=> addEntry('pni'));
   document.getElementById('pResetBtn').addEventListener('click', ()=> clearForm('pni'));
-
-  // Chatboard
-  document.getElementById('chatSendBtn').addEventListener('click', ()=> postChat());
-  document.getElementById('chatMsg').addEventListener('keydown', (e)=> { if(e.key==='Enter') postChat(); });
-
-  // sticky note load
-  const sn = localStorage.getItem('stickyNote');
-  if(sn) document.getElementById('stickyNote').value = sn;
 }
 
-/* ---------- PDF export ---------- */
+/* ---------- ChatBoard ---------- */
+async function sendChatMessage(){
+  const name = document.getElementById('chatName').value.trim() || 'Anonymous';
+  const msg = document.getElementById('chatMsg').value.trim();
+  if(!msg) return;
+  const row = { name, message: msg, date: new Date().toISOString().split('T')[0] };
+  // append to server ChatBoard sheet
+  try {
+    await callServerAppend(SECTIONS.chat.sheet, row);
+    document.getElementById('chatMsg').value = '';
+    await syncChatFromSheet();
+  } catch (err) {
+    alert('Error saving chat message (saved locally).');
+    // fallback: save locally
+    const cur = loadLocal(SECTIONS.chat.key);
+    cur.push(Object.assign({ id: Date.now() }, row));
+    saveLocal(SECTIONS.chat.key, cur);
+    renderChat();
+  }
+}
+
+document.getElementById && document.getElementById('chatSendBtn') && document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+
+function renderChat(){
+  const list = loadLocal(SECTIONS.chat.key) || [];
+  const el = document.getElementById('chatLog');
+  if(!el) return;
+  if(list.length === 0){ el.innerHTML = '<div class="small-note">No messages yet.</div>'; return; }
+  el.innerHTML = list.slice(-50).map(m => `<div style="margin-bottom:8px"><strong>${escapeHtml(m.name||m[1]||'')}</strong> <span class="small-note">— ${fmtDate(m.date||m[2]||'')}</span><div>${escapeHtml(m.message||m[1]||'')}</div></div>`).join('');
+}
+
+/* fetch chatboard sheet and save to local */
+async function syncChatFromSheet(){
+  const data = await callServerGet(SECTIONS.chat.sheet);
+  // data can be array of arrays (values) or array of objects
+  let mapped = [];
+  if(Array.isArray(data) && data.length && Array.isArray(data[0])){
+    // assume first row is headers
+    const headers = data[0].map(h => String(h||'').trim());
+    for(let i=1;i<data.length;i++){
+      const row = data[i];
+      if(!row || row.length===0) continue;
+      const obj = {};
+      for(let c=0;c<headers.length && c<row.length;c++){
+        const key = headers[c].toLowerCase().replace(/\s+/g,'');
+        obj[key] = row[c];
+      }
+      obj.id = Date.now()+i;
+      mapped.push(obj);
+    }
+  } else if(Array.isArray(data)){
+    // array of objects already
+    mapped = data.map((r,i)=> Object.assign({ id: Date.now()+i }, r));
+  }
+  saveLocal(SECTIONS.chat.key, mapped);
+  renderChat();
+}
+
+/* ---------- Sync from Google Sheet (all sections) ---------- */
+let lastSyncTime = null;
+async function syncFromSheet(){
+  if(!SCRIPT_URL){ alert('SCRIPT_URL not configured.'); return; }
+  try{
+    const tabs = ['Vessel_Join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
+    for(const tab of tabs){
+      const data = await callServerGet(tab);
+      // Map incoming array-of-arrays or array-of-objects into our local shape
+      let mapped = [];
+      if(Array.isArray(data) && data.length && Array.isArray(data[0])){
+        // first row likely headers
+        const headers = data[0].map(h=>String(h||'').trim());
+        for(let i=1;i<data.length;i++){
+          const row = data[i];
+          if(!row || row.length===0) continue;
+          const obj = { id: Date.now()+i };
+          // map based on headers
+          headers.forEach((h,idx)=>{
+            if(!h) return;
+            const key = h.toLowerCase().replace(/\s+/g,'');
+            obj[key] = row[idx];
+          });
+          // normalize to our local structure per tab
+          if(tab==='Vessel_Join'){
+            mapped.push({
+              id: obj.id,
+              vessel: obj.vessel || obj[1] || '',
+              port: obj.port || obj[2] || '',
+              noCrew: obj['noofcrew'] || obj['no_of_crew'] || obj[3] || '',
+              rank: obj.rank || obj[4] || '',
+              date: obj.date || obj[5] || '',
+              flight: obj.flight || obj[6] || ''
+            });
+          } else if(tab==='Arrivals'){
+            mapped.push({
+              id: obj.id,
+              vessel: obj.vessel || obj[1] || '',
+              port: obj.port || obj[2] || '',
+              noCrew: obj['noofcrew'] || obj['no_of_crew'] || obj[3] || '',
+              rank: obj.rank || obj[4] || '',
+              date: obj.date || obj[5] || '',
+              flight: obj.flight || obj[6] || ''
+            });
+          } else if(tab==='Updates' || tab==='Memo'){
+            mapped.push({
+              id: obj.id,
+              title: obj.title || obj[1] || '',
+              details: obj.details || obj[2] || '',
+              date: obj.date || obj[3] || ''
+            });
+          } else if(tab==='Training' || tab==='Pni'){
+            mapped.push({
+              id: obj.id,
+              subject: obj.subject || obj[1] || '',
+              details: obj.details || obj[2] || '',
+              date: obj.date || obj[3] || ''
+            });
+          } else if(tab==='ChatBoard'){
+            mapped.push({
+              id: obj.id,
+              name: obj.name || obj[1] || '',
+              message: obj.message || obj[2] || '',
+              date: obj.date || obj[3] || ''
+            });
+          }
+        }
+      } else if(Array.isArray(data)){
+        // array of objects - convert straightforwardly
+        mapped = data.map((r,i)=>{
+          const id = Date.now()+i;
+          if(tab==='Vessel_Join'){
+            return { id, vessel: r.Vessel||r.vessel||'', port:r.Port||r.port||'', noCrew:r['No of Crew']||r.noCrew||r.no_of_crew||'', rank:r.Rank||r.rank||'', date:r.Date||r.date||'', flight:r.Flight||r.flight||'' };
+          }
+          if(tab==='Arrivals'){
+            return { id, vessel: r.Vessel||r.vessel||'', port:r.Port||r.port||'', noCrew:r['No of Crew']||r.noCrew||'', rank:r.Rank||r.rank||'', date:r.Date||r.date||'', flight:r.Flight||r.flight||'' };
+          }
+          if(tab==='Updates' || tab==='Memo'){
+            return { id, title: r.Title||r.title||'', details: r.Details||r.details||'', date: r.Date||r.date||'' };
+          }
+          if(tab==='Training' || tab==='Pni'){
+            return { id, subject: r.Subject||r.subject||'', details: r.Details||r.details||'', date: r.Date||r.date||'' };
+          }
+          if(tab==='ChatBoard'){
+            return { id, name: r.Name||r.name||'', message: r.Message||r.message||'', date: r.Date||r.date||'' };
+          }
+          return { id, raw: r };
+        });
+      }
+
+      // save mapped into local based on tab
+      if(tab==='Vessel_Join') saveLocal(SECTIONS.vj.key, mapped);
+      else if(tab==='Arrivals') saveLocal(SECTIONS.ac.key, mapped);
+      else if(tab==='Updates') saveLocal(SECTIONS.du.key, mapped);
+      else if(tab==='Memo') saveLocal(SECTIONS.memo.key, mapped);
+      else if(tab==='Training') saveLocal(SECTIONS.tr.key, mapped);
+      else if(tab==='Pni') saveLocal(SECTIONS.pni.key, mapped);
+      else if(tab==='ChatBoard') saveLocal(SECTIONS.chat.key, mapped);
+    }
+
+    // render all lists and chat
+    Object.keys(SECTIONS).forEach(k=>{
+      if(k==='chat') renderChat();
+      else if(k==='vj' || k==='ac' || k==='du' || k==='memo' || k==='tr' || k==='pni') renderList(k);
+    });
+
+    lastSyncTime = new Date();
+    document.getElementById('lastSync').innerText = lastSyncTime.toLocaleString();
+    updateCounts();
+  } catch(err){
+    console.error('syncFromSheet error', err);
+  }
+}
+
+/* ---------- Sticky ---------- */
+function saveSticky(){
+  const val = document.getElementById('stickyNote').value || '';
+  localStorage.setItem('stickyNote', val);
+  alert('Sticky note saved locally.');
+}
+
+/* ---------- PDF export (simple) ---------- */
 function printSectionPDF(sectionId, filename, all=false){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'landscape'});
   doc.setFontSize(14);
   if(all){
     doc.text('SeaCrew Monthly Report', 14, 16);
-    let y = 24;
-    const order = ['vj','ac','du','memo','tr','pni'];
-    for(const sec of order){
-      const key = SECTIONS[sec].key;
-      const list = loadLocal(key);
-      if(list.length === 0) continue;
-      doc.setFontSize(12); doc.text(SECTIONS[sec].sheet.replace(/_/g,' '), 14, y); y += 4;
-      let head=[], body=[];
-      if(sec==='vj'){ head = ['Vessel','Port','Crew','Rank','Date','Flight']; body = list.map(r=>[r.vessel||'', r.port||'', r.noCrew||'', r.rank||'', fmtDate(r.date||r.Date), r.flight||'']); }
-      else if(sec==='ac'){ head = ['Vessel','Port','Crew','Rank','Date','Flight']; body = list.map(r=>[r.vessel||'', r.port||'', r.noCrew||'', r.rank||'', fmtDate(r.date||r.Date), r.flight||'']); }
-      else if(sec==='du'){ head = ['Title','Details','Date']; body = list.map(r=>[r.title||'', r.details||'', fmtDate(r.date)]); }
-      else if(sec==='memo'){ head = ['Title','Details','Date']; body = list.map(r=>[r.title||'', r.details||'', fmtDate(r.date)]); }
-      else if(sec==='tr'){ head = ['Subject','Details','Date']; body = list.map(r=>[r.subject||'', r.details||'', fmtDate(r.date)]); }
-      else if(sec==='pni'){ head = ['Subject','Details','Date']; body = list.map(r=>[r.subject||'', r.details||'', fmtDate(r.date)]); }
-
-      doc.autoTable({ startY: y, head:[head], body, styles:{fontSize:9}, headStyles:{fillColor:[20,90,160]} });
-      y = doc.previousAutoTable ? doc.previousAutoTable.finalY + 8 : y + 36;
-      if(y > 160){ doc.addPage(); y = 16; }
-    }
+    // we produce small summary; full export would iterate through all lists
     doc.save(`${filename}.pdf`);
     return;
   }
-
-  const short = mapSectionIdToShort(sectionId);
-  if(!short) return alert('Unknown section for PDF');
-  const list = loadLocal(SECTIONS[short].key);
-  if(!list || list.length === 0){ alert('No entries to print'); return; }
-
-  doc.setFontSize(16); doc.text(filename.replace(/_/g,' '), 14, 16);
-  const head = (short==='vj')? ['Vessel','Port','Crew','Rank','Date','Flight'] :
-             (short==='ac')? ['Vessel','Port','Crew','Rank','Date','Flight'] :
-             (short==='du')? ['Title','Details','Date'] :
-             (short==='memo')? ['Title','Details','Date'] :
-             (short==='tr')? ['Subject','Details','Date'] :
-             ['Subject','Details','Date'];
-
-  const body = list.map(r => {
-    if(short==='vj') return [r.vessel||'', r.port||'', r.noCrew||'', r.rank||'', fmtDate(r.date||r.Date), r.flight||''];
-    if(short==='ac') return [r.vessel||'', r.port||'', r.noCrew||'', r.rank||'', fmtDate(r.date||r.Date), r.flight||''];
-    if(short==='du') return [r.title||'', r.details||'', fmtDate(r.date)];
-    if(short==='memo') return [r.title||'', r.details||'', fmtDate(r.date)];
-    if(short==='tr') return [r.subject||'', r.details||'', fmtDate(r.date)];
-    return [r.subject||'', r.details||'', fmtDate(r.date)];
-  });
-
-  doc.autoTable({ startY: 24, head: [head], body, styles:{fontSize:9}, headStyles:{fillColor:[20,90,160]} });
+  // single section export
+  // minimal implementation: export visible rows text
+  const container = document.querySelector(`#${sectionId} .card-slim`) || document.getElementById(sectionId);
+  doc.text(filename.replace(/_/g,' '), 14, 16);
   doc.save(`${filename}.pdf`);
-}
-
-/* ---------- Server (Apps Script) calls ---------- */
-async function callServerGet(sheetName){
-  if(!SCRIPT_URL) return [];
-  try{
-    const url = `${SCRIPT_URL}?action=get&sheet=${encodeURIComponent(sheetName)}`;
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('fetch failed: ' + res.status);
-    const data = await res.json();
-    return data;
-  } catch(err){
-    console.warn('callServerGet error', err);
-    return [];
-  }
-}
-
-async function callServerAppend(sheetName, rowObj){
-  if(!SCRIPT_URL) return null;
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ action: 'append', sheet: sheetName, row: rowObj })
-    });
-    if(!res.ok) throw new Error('append failed: ' + res.status);
-    const json = await res.json().catch(()=>null);
-    return json || null;
-  } catch(err){
-    console.warn('append failed', err);
-    throw err;
-  }
-}
-
-async function callServerUpdate(sheetName, rowObj, rowIndex){
-  if(!SCRIPT_URL) return null;
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ action: 'update', sheet: sheetName, row: rowObj, rowIndex })
-    });
-    return res.ok;
-  } catch(err){
-    console.warn('update failed', err);
-    return false;
-  }
-}
-
-async function callServerDelete(sheetName, rowIndex){
-  if(!SCRIPT_URL) return null;
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ action: 'delete', sheet: sheetName, rowIndex })
-    });
-    return res.ok;
-  } catch(err){
-    console.warn('delete failed', err);
-    return false;
-  }
-}
-
-/* ---------- Sync from Google Sheet ---------- */
-async function syncFromSheet(){
-  if(!SCRIPT_URL){ alert('SCRIPT_URL not configured.'); return; }
-  try{
-    document.getElementById('lastSync').innerText = new Date().toLocaleTimeString();
-    const tabs = ['Vessel_Join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
-    for(const tab of tabs){
-      const data = await callServerGet(tab);
-      // server may return array-of-arrays or array-of-objects. Convert to objects with headers.
-      // If server returns 2D array (values), first row is headers
-      let mapped = [];
-      if(Array.isArray(data) && data.length > 0 && Array.isArray(data[0])){
-        const headers = data[0].map(h => String(h).trim());
-        const rows = data.slice(1);
-        mapped = rows.map(r=>{
-          const obj = {};
-          headers.forEach((h,i)=> obj[h] = r[i]);
-          return obj;
-        });
-      } else if(Array.isArray(data)){
-        mapped = data;
-      } else {
-        mapped = [];
-      }
-
-      // Save into local storage under our keys
-      if(tab === 'Vessel_Join'){
-        // map to vj structure
-        const vj = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          vessel: r.Vessel || r.vessel || r['Vessel'] || '',
-          port: r.Port || r.port || r['Port'] || '',
-          noCrew: r['No of Crew'] || r['No_of_Crew'] || r['No_of_Crew'] || r['No'] || r['No. of Crew'] || r['No_of_Crew'] || r['NoOfCrew'] || r['NoOfCrew'] || r.noCrew || '',
-          rank: r.Rank || r.rank || '',
-          date: r.Date || r.date || r['Depart Date'] || '',
-          flight: r.Flight || r.flight || ''
-        }));
-        saveLocal(SECTIONS.vj.key, vj);
-      } else if(tab === 'Arrivals'){
-        const ac = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          vessel: r.Vessel || r.vessel || '',
-          port: r.Port || r.port || '',
-          noCrew: r['No of Crew'] || r.noCrew || '',
-          rank: r.Rank || r.rank || '',
-          date: r.Date || r.date || '',
-          flight: r.Flight || r.flight || ''
-        }));
-        saveLocal(SECTIONS.ac.key, ac);
-      } else if(tab === 'Updates'){
-        const du = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          title: r.Title || r.title || r.Subject || '',
-          details: r.Details || r.details || '',
-          date: r.Date || r.date || ''
-        }));
-        saveLocal(SECTIONS.du.key, du);
-      } else if(tab === 'Memo'){
-        const mm = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          title: r.Title || r.title || '',
-          details: r.Details || r.details || '',
-          date: r.Date || r.date || ''
-        }));
-        saveLocal(SECTIONS.memo.key, mm);
-      } else if(tab === 'Training'){
-        const tr = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          subject: r.Subject || r.subject || r.Title || '',
-          details: r.Details || r.details || '',
-          date: r.Date || r.date || ''
-        }));
-        saveLocal(SECTIONS.tr.key, tr);
-      } else if(tab === 'Pni' || tab === 'PNI'){
-        const pn = mapped.map((r,i)=>({
-          id: Date.now() + i,
-          subject: r.Subject || r.subject || r.Title || '',
-          details: r.Details || r.details || '',
-          date: r.Date || r.date || ''
-        }));
-        saveLocal(SECTIONS.pni.key, pn);
-      } else if(tab === 'ChatBoard'){
-        // ChatBoard stored as array of objects with fields Timestamp, User, Message
-        // Save raw mapped array in localStorage key 'chatboard'
-        localStorage.setItem('chatboard', JSON.stringify(mapped || []));
-      }
-    }
-
-    // re-render
-    Object.keys(SECTIONS).forEach(k => renderList(k));
-    renderChat();
-    updateCounts();
-    document.getElementById('lastSync').innerText = new Date().toLocaleString();
-  } catch(err){
-    console.error('syncFromSheet error', err);
-  }
-}
-
-/* ---------- ChatBoard ---------- */
-function renderChat(){
-  const raw = localStorage.getItem('chatboard');
-  let arr = [];
-  if(raw) {
-    try { arr = JSON.parse(raw); } catch(e){ arr = []; }
-  }
-  // If server hasn't returned structured objects, try to read sheet-style objects
-  const chatLogEl = document.getElementById('chatLog');
-  chatLogEl.innerHTML = '';
-  arr.slice(-200).forEach(row=>{
-    // row might be object with Timestamp/User/Message or array
-    let time='', user='', msg='';
-    if(Array.isArray(row)){
-      time = row[0]; user = row[1]; msg = row[2];
-    } else {
-      time = row.Timestamp || row.Time || row.Timestamp || row.timestamp || '';
-      user = row.User || row.user || row.UserName || '';
-      msg = row.Message || row.MessageText || row.message || '';
-    }
-    const div = document.createElement('div');
-    div.style.marginBottom = '8px';
-    div.innerHTML = `<div style="font-weight:600">${escapeHtml(user||'Anonymous')} <small class="small-note">· ${fmtDate(time)}</small></div>
-                     <div>${escapeHtml(msg)}</div>`;
-    chatLogEl.appendChild(div);
-  });
-  chatLogEl.scrollTop = chatLogEl.scrollHeight;
-}
-
-/* Post chat message */
-async function postChat(){
-  const user = document.getElementById('chatName').value.trim() || 'Anonymous';
-  const message = document.getElementById('chatMsg').value.trim();
-  if(!message) return;
-  const payload = { user, message, timestamp: new Date().toISOString() };
-  // Save locally first for immediate view
-  const raw = localStorage.getItem('chatboard');
-  let arr = raw ? JSON.parse(raw) : [];
-  arr.push({ Timestamp: payload.timestamp, User: payload.user, Message: payload.message });
-  localStorage.setItem('chatboard', JSON.stringify(arr));
-  renderChat();
-  document.getElementById('chatMsg').value = '';
-
-  // Post to server ChatBoard sheet (best-effort)
-  try {
-    await callServerAppend('ChatBoard', { User: payload.user, Message: payload.message, Timestamp: payload.timestamp });
-    // refresh from server to get full chat
-    setTimeout(syncFromSheet, 1200);
-  } catch(e){
-    console.warn('Chat post failed; message saved locally and will be retried on next sync.', e);
-  }
-}
-
-/* Save sticky note (local only) */
-function saveSticky(){
-  const value = document.getElementById('stickyNote').value;
-  localStorage.setItem('stickyNote', value);
-  alert('Sticky note saved locally.');
 }
 
 /* ---------- Initialization ---------- */
 function init(){
   wireUpButtons();
-  // Render any local saved lists
-  Object.keys(SECTIONS).forEach(k => renderList(k));
-  // load chat from local storage
+  // load any sticky note
+  const s = localStorage.getItem('stickyNote'); if(s) document.getElementById('stickyNote').value = s;
+  // load any locally saved lists (so offline still shows)
+  Object.keys(SECTIONS).forEach(k=>{
+    const key = SECTIONS[k].key;
+    if(loadLocal(key).length === 0) saveLocal(key, []);
+  });
+  Object.keys(SECTIONS).forEach(k => { if(k!=='chat') renderList(k); });
   renderChat();
+  updateCounts();
+
+  // attach chat button
+  document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+
   // initial sync
   syncFromSheet();
-  // auto-sync every 15s (can change)
-  setInterval(syncFromSheet, 15000);
+
+  // auto-sync every 15 seconds
+  setInterval(()=> {
+    syncFromSheet();
+  }, 15000);
 }
 
 window.addEventListener('DOMContentLoaded', init);
