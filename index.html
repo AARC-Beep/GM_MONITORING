@@ -3,361 +3,250 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SeaCrew Dashboard — DAILY ROUTINE LOG</title>
-
+  <title>Daily Routine Dashboard — TIWALA</title>
   <style>
+    :root {
+      --dark-navy: #021B33;
+      --navy-accent: #053A5E;
+      --gold: #D4AF37;
+      --white: #F4F7FA;
+    }
+
     body {
       margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #f7f8fa;
-      color: #222;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--dark-navy);
+      color: var(--white);
       display: flex;
-      height: 100vh;
     }
 
+    /* Sidebar */
     .sidebar {
-      width: 220px;
-      background: #071b2f;
-      color: #fff;
+      width: 240px;
+      background: var(--navy-accent);
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 10px 0;
-      overflow-y: auto;
+      padding: 1rem;
+      position: fixed;
     }
-
     .sidebar h2 {
+      color: var(--gold);
       text-align: center;
-      margin: 10px 0;
-      font-size: 16px;
+      margin-bottom: 1.5rem;
     }
-
     .sidebar a {
-      color: #cfd9e6;
       text-decoration: none;
-      padding: 10px 20px;
+      color: var(--white);
+      padding: 0.8rem;
+      border-radius: 8px;
+      margin: 0.3rem 0;
       display: block;
-      font-size: 14px;
+      transition: background 0.3s;
     }
-
     .sidebar a:hover {
-      background: #0c2f50;
+      background: rgba(255, 255, 255, 0.1);
     }
 
+    /* Main content */
     .main {
-      flex: 1;
-      padding: 20px 30px;
-      overflow-y: auto;
+      margin-left: 260px;
+      padding: 2rem;
+      width: 100%;
     }
 
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 25px;
+      margin-bottom: 2rem;
     }
 
-    h1 {
-      font-size: 22px;
-      color: #0b2447;
+    header h1 {
+      font-size: 1.8rem;
+      color: var(--gold);
     }
 
-    .btn {
-      padding: 6px 10px;
-      border: none;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-
-    .btn-sync {
-      background: #e8f0ff;
-      border: 1px solid #8daff9;
-      color: #0b2447;
-    }
-
-    .btn-clear {
-      background: #ffeaea;
-      border: 1px solid #f98d8d;
-      color: #7a0000;
-    }
-
-    .btn-report {
-      background: #e8f7ea;
-      border: 1px solid #4caf50;
-      color: #1b5e20;
-    }
-
-    .grid {
+    .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.2rem;
     }
 
     .card {
-      background: white;
-      padding: 15px 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: var(--navy-accent);
+      padding: 1.5rem;
+      border-radius: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
     }
 
     .card h3 {
       margin-top: 0;
-      font-size: 16px;
-      color: #0b2447;
+      color: var(--gold);
     }
 
     .card small {
-      color: #666;
+      color: #b5c6d6;
     }
 
-    .entries {
-      margin-top: 10px;
-      background: #f9fafc;
-      border: 1px solid #ddd;
+    .btn {
+      background: var(--gold);
+      color: var(--dark-navy);
+      padding: 0.6rem 1rem;
+      border: none;
       border-radius: 6px;
-      padding: 8px;
-      font-size: 13px;
-      max-height: 100px;
-      overflow-y: auto;
+      cursor: pointer;
+      margin-top: 1rem;
+      font-weight: bold;
     }
 
-    .footer {
-      margin-top: 30px;
-      font-size: 12px;
-      color: #555;
+    .btn:hover {
+      background: #f0c74f;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: #8faac4;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
- <div class="sidebar">
-  <h3>⚓ SeaCrew — PTSC/THRI</h3>
-  <a href="#" data-section="Dashboard">Dashboard</a>
-  <a href="#" data-section="Vessel_Join">Vessel Crew Joining</a>
-  <a href="#" data-section="Arrivals">Arriving Crew</a>
-  <a href="#" data-section="Updates">Daily Updates</a>
-  <a href="#" data-section="Memo">Memo</a>
-  <a href="#" data-section="Training">Training</a>
-  <a href="#" data-section="Pni">P&I / Events</a>
-  <hr>
-  <a href="https://flightaware.com/live/airport/RPLL" target="_blank">Flights — FlightAware (MNL)</a>
-  <a href="https://www.msn.com/en-ph/news" target="_blank">News — MSN Philippines</a>
-  <a href="https://www.pagasa.dost.gov.ph/" target="_blank">Weather — PAGASA</a>
-  <a href="https://dmw.gov.ph/" target="_blank">DMW — Dept. of Migrant Workers</a>
-  <a href="https://owwa.gov.ph/" target="_blank">OWWA — Overseas Workers Welfare Admin</a>
-  <a href="https://marina.gov.ph/" target="_blank">MARINA — Maritime Industry Authority</a>
-</div>
 
-  <div id="main">
-  <div id="Dashboard" class="main-section"></div>
-  <div id="Vessel_Join" class="main-section" style="display:none;"></div>
-  <div id="Arrivals" class="main-section" style="display:none;"></div>
-  <div id="Updates" class="main-section" style="display:none;"></div>
-  <div id="Memo" class="main-section" style="display:none;"></div>
-  <div id="Training" class="main-section" style="display:none;"></div>
-  <div id="Pni" class="main-section" style="display:none;"></div>
-</div>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>TIWALA OPS</h2>
+    <a href="#">Dashboard</a>
+    <a href="#" onclick="showSection('Vessel_Join')">Vessel Join</a>
+    <a href="#" onclick="showSection('Arrivals')">Arrivals</a>
+    <a href="#" onclick="showSection('Updates')">Updates</a>
+    <a href="#" onclick="showSection('Memo')">Memo</a>
+    <a href="#" onclick="showSection('Training')">Training</a>
+    <a href="#" onclick="showSection('Pni')">PNI</a>
+    <a href="#" onclick="showSection('ChatBoard')">ChatBoard</a>
+  </div>
 
-</header>
+  <!-- Main -->
+  <div class="main">
+    <header>
+      <h1>Daily Routine Dashboard</h1>
+      <span id="date"></span>
+    </header>
 
-   .dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-}
+    <section class="cards" id="dashboard">
+      <div class="card" id="vesselJoinCard">
+        <h3>Vessel Join</h3>
+        <p id="vesselJoinCount">Loading...</p>
+        <small>Latest crew joining</small><br>
+        <button class="btn" onclick="addEntry('Vessel_Join')">+ Add Entry</button>
+      </div>
 
-.card {
-  background: white;
-  border-radius: 1rem;
-  padding: 1rem;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
+      <div class="card" id="arrivalsCard">
+        <h3>Arrivals</h3>
+        <p id="arrivalsCount">Loading...</p>
+        <small>Latest crew arrivals</small><br>
+        <button class="btn" onclick="addEntry('Arrivals')">+ Add Entry</button>
+      </div>
 
-.card h3 {
-  color: #002B5B;
-  margin-bottom: 0.5rem;
-}
+      <div class="card" id="updatesCard">
+        <h3>Updates</h3>
+        <p id="updatesCount">Loading...</p>
+        <small>Last update log</small><br>
+        <button class="btn" onclick="addEntry('Updates')">+ Add Entry</button>
+      </div>
 
-<script>
-// =============================
-// ⚓ CONFIGURATION
-// =============================
-const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx123abcXYZ/exec";
+      <div class="card" id="memoCard">
+        <h3>Memo</h3>
+        <p id="memoCount">Loading...</p>
+        <small>Latest company memo</small><br>
+        <button class="btn" onclick="addEntry('Memo')">+ Add Entry</button>
+      </div>
 
-async function saveToGoogleSheet(sheetName, rowData) {
-  try {
-    const response = await fetch(GOOGLE_APPS_SCRIPT_URL + "?sheetName=" + sheetName, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(rowData),
-    });
-    console.log("Data sent to Google Sheets:", sheetName, rowData);
-  } catch (err) {
-    console.error("Failed to send to Google Sheets:", err);
-  }
-}
+      <div class="card" id="trainingCard">
+        <h3>Training</h3>
+        <p id="trainingCount">Loading...</p>
+        <small>Training sessions recorded</small><br>
+        <button class="btn" onclick="addEntry('Training')">+ Add Entry</button>
+      </div>
 
+      <div class="card" id="pniCard">
+        <h3>PNI Reports</h3>
+        <p id="pniCount">Loading...</p>
+        <small>Recent cases</small><br>
+        <button class="btn" onclick="addEntry('Pni')">+ Add Entry</button>
+      </div>
 
-// =============================
-// ⚓ INITIALIZATION
-// =============================
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".sidebar a[data-section]").forEach(link => {
-    link.addEventListener("click", e => {
-      e.preventDefault();
-      const section = e.target.getAttribute("data-section");
-      showSection(section);
-    });
-  });
-  showSection("Dashboard");
-});
+      <div class="card" id="chatCard">
+        <h3>Chat Board</h3>
+        <p id="chatCount">Loading...</p>
+        <small>Latest messages</small><br>
+        <button class="btn" onclick="addEntry('ChatBoard')">+ Add Message</button>
+      </div>
+    </section>
 
-// =============================
-// ⚓ SECTION HANDLER
-// =============================
-function showSection(section) {
-  activeSection = section;
-  document.querySelectorAll(".main-section").forEach(s => s.style.display = "none");
-  const target = document.getElementById(section);
-  if (target) target.style.display = "block";
+    <footer>© 2025 TIWALA HUMAN RESOURCES INC.</footer>
+  </div>
 
-  if (section === "Dashboard") renderDashboard();
-  else renderForm(section);
-}
+  <script>
+    const apiURL = "https://script.google.com/macros/s/AKfycbxJ6IJUec19lOV5SUt6QYHJan2jr04QcfoFMkturSjzO-hmwM_OdYP-xcyVG0EP0q5Oeg/exec";
 
-// =============================
-// ⚓ DASHBOARD RENDER
-// =============================
-function renderDashboard() {
-  const dash = document.getElementById("Dashboard");
-  dash.innerHTML = `
-    <h2>SeaCrew Dashboard</h2>
-    <p><small>Connected to Google Sheet: <b>DAILY ROUTINE LOG</b></small></p>
-    <div class="grid">
-      ${sheetTabs.map(tab => renderCard(tab)).join("")}
-    </div>
-  `;
-}
+    document.getElementById("date").innerText = new Date().toLocaleDateString();
 
-function renderCard(tab) {
-  const entries = localData[tab] || [];
-  const preview = entries.slice(-3).map(e => {
-    if (tab === "Vessel_Join" || tab === "Arrivals")
-      return `<div><b>${e.Vessel}</b> — ${e.Port}, ${e.No_of_Crew} crew, ${e.Rank}, ${e.Date}</div>`;
-    else
-      return `<div><b>${e.Title || e.Subject}</b> — ${e.Details}, ${e.Date}</div>`;
-  }).join("");
-  return `
-  <div class="card">
-    <h3>${tab.replace("_", " ")}</h3>
-    <small>${entries.length} entries</small>
-    <div>${preview || "No data yet."}</div>
-    <button onclick="showSection('${tab}')">Open</button>
-  </div>`;
-}
+    async function fetchData(sheetName) {
+      try {
+        const res = await fetch(`${apiURL}?sheet=${sheetName}`);
+        const data = await res.json();
+        return data;
+      } catch (e) {
+        console.error(`Error fetching ${sheetName}:`, e);
+        return [];
+      }
+    }
 
-// =============================
-// ⚓ FORM RENDER
-// =============================
-function renderForm(tab) {
-  const formContainer = document.getElementById(tab);
-  let fields = "";
-  switch(tab) {
-    case "Vessel_Join":
-    case "Arrivals":
-      fields = `
-        <input id="Vessel" placeholder="Vessel">
-        <input id="Port" placeholder="Port">
-        <input id="No_of_Crew" placeholder="No_of_Crew" type="number">
-        <input id="Rank" placeholder="Rank">
-        <input id="Date" type="date">
-        <input id="Flight" placeholder="Flight">
-      `;
-      break;
-    case "Updates":
-    case "Memo":
-      fields = `
-        <input id="Title" placeholder="Title">
-        <textarea id="Details" placeholder="Details"></textarea>
-        <input id="Date" type="date">
-      `;
-      break;
-    case "Training":
-    case "Pni":
-      fields = `
-        <input id="Subject" placeholder="Subject">
-        <textarea id="Details" placeholder="Details"></textarea>
-        <input id="Date" type="date">
-      `;
-      break;
-  }
+    async function loadDashboard() {
+      const sheets = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni", "ChatBoard"];
+      for (let s of sheets) {
+        const data = await fetchData(s);
+        document.getElementById(s.toLowerCase() + "Count").innerText = data.length + " record(s)";
+      }
+    }
 
-  formContainer.innerHTML = `
-    <h2>${tab.replace("_", " ")}</h2>
-    <form onsubmit="saveEntry(event, '${tab}')">
-      ${fields}
-      <br>
-      <button type="submit">Save to Sheet</button>
-    </form>
-    <button onclick="syncFromSheet()">Sync from Google Sheet</button>
-    <button onclick="clearLocal()">Clear Local</button>
-  `;
-}
+    async function addEntry(sheetName) {
+      const fields = {
+        "Vessel_Join": ["Vessel", "Port", "No_of_Crew", "Rank", "Date", "Flight"],
+        "Arrivals": ["Vessel", "Port", "No_of_Crew", "Rank", "Date", "Flight"],
+        "Updates": ["Title", "Details", "Date"],
+        "Memo": ["Title", "Details", "Date"],
+        "Training": ["Subject", "Details", "Date"],
+        "Pni": ["Subject", "Details", "Date"],
+        "ChatBoard": ["Name", "Message", "Date"]
+      }[sheetName];
 
-// =============================
-// ⚓ SAVE ENTRY
-// =============================
-async function saveEntry(event, tab) {
-  event.preventDefault();
-  const entry = {};
-  document.querySelectorAll(`#${tab} input, #${tab} textarea`).forEach(el => {
-    entry[el.id] = el.value.trim();
-  });
+      let entry = {};
+      for (let f of fields) {
+        entry[f] = prompt(`Enter ${f}:`);
+      }
 
-  if (!entry.Date) entry.Date = new Date().toISOString().slice(0,10);
-  if (!localData[tab]) localData[tab] = [];
-  localData[tab].push(entry);
-  localStorage.setItem("routineData", JSON.stringify(localData));
+      if (!entry[fields[0]]) return alert("Entry cancelled.");
 
-  try {
-    await fetch(scriptURL, {
-      method: "POST",
-      mode: "no-cors",
-      body: JSON.stringify({ tab, entry }),
-      headers: { "Content-Type": "application/json" }
-    });
-    alert(`✅ Saved to Google Sheet (${tab})`);
-  } catch (err) {
-    alert("⚠️ Offline: saved locally only.");
-  }
-}
+      const res = await fetch(apiURL, {
+        method: "POST",
+        body: JSON.stringify({ sheet: sheetName, data: entry }),
+        headers: { "Content-Type": "application/json" }
+      });
 
-// =============================
-// ⚓ SYNC FROM SHEET
-// =============================
-async function syncFromSheet() {
-  try {
-    const res = await fetch(scriptURL + "?mode=get");
-    const data = await res.json();
-    localData = data;
-    localStorage.setItem("routineData", JSON.stringify(localData));
-    renderDashboard();
-    alert("✅ Synced from Google Sheet!");
-  } catch (err) {
-    alert("❌ Sync failed — check your Web App URL or internet.");
-  }
-}
+      const msg = await res.text();
+      alert(msg);
+      loadDashboard();
+    }
 
-// =============================
-// ⚓ CLEAR LOCAL STORAGE
-// =============================
-function clearLocal() {
-  if (confirm("Clear all local stored data?")) {
-    localStorage.removeItem("routineData");
-    localData = {};
-    renderDashboard();
-  }
-}
-</script>
-
+    loadDashboard();
+  </script>
 </body>
 </html>
