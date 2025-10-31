@@ -187,7 +187,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 
   <!-- ---------- FORMS & LISTS (unchanged layout) ---------- -->
   <!-- Vessel Join -->
-  <section id="Vessel_Join" class="section" style="display:none">
+  <section id="vesselJoin" class="section" style="display:none">
     <div class="d-flex justify-content-between align-items-center mb-2">
       <h4>Vessel Crew Joining</h4>
       <div class="d-flex gap-2">
@@ -202,7 +202,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
         <input class="form-control" placeholder="Port" id="vjPort">
         <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
         <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Date" type="date" id="vjDate">
+        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
         <input class="form-control" placeholder="Flight" id="vjFlight">
         <button class="btn btn-success" id="vjAddBtn">Add</button>
         <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
@@ -228,7 +228,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
         <input class="form-control" placeholder="Port" id="acPort">
         <input class="form-control" placeholder="No. of Crew" type="number" id="acNo">
         <input class="form-control" placeholder="Rank" id="acRank">
-        <input class="form-control" placeholder="Date" type="date" id="acDate">
+        <input class="form-control" placeholder="Arrival Date" type="date" id="acDate">
         <input class="form-control" placeholder="Flight" id="acFlight">
         <button class="btn btn-success" id="acAddBtn">Add</button>
         <button class="btn btn-secondary" id="acResetBtn">Reset</button>
@@ -252,7 +252,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
       <div class="form-row">
         <input class="form-control" placeholder="Title" id="duTitle">
         <input class="form-control" placeholder="Details" id="duDetails">
-        <input class="form-control" type="Date" id="duDate">
+        <input class="form-control" type="date" id="duDate">
         <button class="btn btn-success" id="duAddBtn">Add</button>
         <button class="btn btn-secondary" id="duResetBtn">Reset</button>
       </div>
@@ -274,7 +274,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
       <div class="form-row">
         <input class="form-control" placeholder="Title" id="mTitle">
         <input class="form-control" placeholder="Details" id="mDetails">
-        <input class="form-control" type="Date" id="mDate">
+        <input class="form-control" type="date" id="mDate">
         <button class="btn btn-success" id="mAddBtn">Add</button>
         <button class="btn btn-secondary" id="mResetBtn">Reset</button>
       </div>
@@ -296,7 +296,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
       <div class="form-row">
         <input class="form-control" placeholder="Subject" id="tSubject">
         <input class="form-control" placeholder="Details" id="tDetails">
-        <input class="form-control" type="Date" id="tDate">
+        <input class="form-control" type="date" id="tDate">
         <button class="btn btn-success" id="tAddBtn">Add</button>
         <button class="btn btn-secondary" id="tResetBtn">Reset</button>
       </div>
@@ -318,7 +318,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
       <div class="form-row">
         <input class="form-control" placeholder="Subject" id="pSubject">
         <input class="form-control" placeholder="Details" id="pDetails">
-        <input class="form-control" type="Date" id="pDate">
+        <input class="form-control" type="date" id="pDate">
         <button class="btn btn-success" id="pAddBtn">Add</button>
         <button class="btn btn-secondary" id="pResetBtn">Reset</button>
       </div>
