@@ -802,35 +802,39 @@ async function syncFromSheet(){
   const tabs = ['Vessel_Join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
   const now = new Date();
   document.getElementById('lastSync').innerText = now.toLocaleString();
+
   for(const tab of tabs){
     const data = await callServerGet(tab);
     if(!Array.isArray(data)) continue;
-    // map server row objects into our local internal representation
+
     let mapped = [];
+
     if(tab === 'Vessel_Join'){
       mapped = data.map(r => ({
         id: Date.now() + Math.floor(Math.random()*100000),
-        vessel: r['Vessel'] || r['vessel'] || '',
-        port: r['Port'] || r['port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || r['No_of_Crew'] || '',
-        rank: r['Rank'] || r['rank'] || '',
-        date: r['Date'] || r['date'] || r['Timestamp'] || '',
-        flight: r['Flight'] || r['flight'] || ''
+        vessel: r['Vessel'] || '',
+        port: r['Port'] || '',
+        noCrew: r['No. of Crew'] || '',
+        rank: r['Rank'] || '',
+        date: r['Date'] || r['Timestamp'] || '',
+        flight: r['Flight'] || ''
       }));
       saveLocal(SECTIONS.vj.key, mapped);
       renderList('vj');
+
     } else if(tab === 'Arrivals'){
       mapped = data.map(r => ({
         id: Date.now() + Math.floor(Math.random()*100000),
         vessel: r['Vessel'] || '',
         port: r['Port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || '',
+        noCrew: r['No. of Crew'] || '',
         rank: r['Rank'] || '',
         date: r['Date'] || r['Timestamp'] || '',
         flight: r['Flight'] || ''
       }));
       saveLocal(SECTIONS.ac.key, mapped);
       renderList('ac');
+
     } else if(tab === 'Updates'){
       mapped = data.map(r => ({
         id: Date.now() + Math.floor(Math.random()*100000),
@@ -840,6 +844,7 @@ async function syncFromSheet(){
       }));
       saveLocal(SECTIONS.du.key, mapped);
       renderList('du');
+
     } else if(tab === 'Memo'){
       mapped = data.map(r => ({
         id: Date.now() + Math.floor(Math.random()*100000),
@@ -849,6 +854,7 @@ async function syncFromSheet(){
       }));
       saveLocal(SECTIONS.memo.key, mapped);
       renderList('memo');
+
     } else if(tab === 'Training'){
       mapped = data.map(r => ({
         id: Date.now() + Math.floor(Math.random()*100000),
@@ -858,25 +864,28 @@ async function syncFromSheet(){
       }));
       saveLocal(SECTIONS.tr.key, mapped);
       renderList('tr');
-   } else if(tab === 'Pni') {
-  mapped = data.map(r => ({
-    id: Date.now() + Math.floor(Math.random()*100000),
-    subject: r['Subject'] || '',
-    details: r['Details'] || '',
-    date: r['Date'] || r['Timestamp'] || ''
-  }));
-  saveLocal(SECTIONS.pni.key, mapped);
-  renderList('pni');
-}
+
+    } else if(tab === 'Pni'){
+      mapped = data.map(r => ({
+        id: Date.now() + Math.floor(Math.random()*100000),
+        subject: r['Subject'] || '',
+        details: r['Details'] || '',
+        date: r['Date'] || r['Timestamp'] || ''
+      }));
       saveLocal(SECTIONS.pni.key, mapped);
       renderList('pni');
+
     } else if(tab === 'ChatBoard'){
-      // don't replace local chat that user might have unsent messages — but we will update display from server
-      // Map server rows for UI
-      const chatRows = data.map(r => ({ name: r['Name'] || '', message: r['Message'] || '', date: r['Date'] || r['Timestamp'] || '' }));
-      // show in chat log
+      const chatRows = data.map(r => ({
+        name: r['Name'] || '',
+        message: r['Message'] || '',
+        date: r['Date'] || r['Timestamp'] || ''
+      }));
+
       const el = document.getElementById('chatLog');
-      el.innerHTML = chatRows.reverse().map(row => `<div style="margin-bottom:8px"><strong>${escapeHtml(row.name)}</strong><div>${escapeHtml(row.message)}</div><small class="small-note">${fmtDate(row.date)}</small></div>`).join('');
+      el.innerHTML = chatRows.reverse()
+        .map(row => `<div style="margin-bottom:8px"><strong>${escapeHtml(row.name)}</strong><div>${escapeHtml(row.message)}</div><small class="small-note">${fmtDate(row.date)}</small></div>`)
+        .join('');
     }
   }
 }
