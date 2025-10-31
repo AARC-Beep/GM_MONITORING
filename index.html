@@ -858,13 +858,16 @@ async function syncFromSheet(){
       }));
       saveLocal(SECTIONS.tr.key, mapped);
       renderList('tr');
-   } else if (tab === 'Pni') {
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        subject: r['Subject'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || ''
-      }));
+   } else if(tab === 'Pni') {
+  mapped = data.map(r => ({
+    id: Date.now() + Math.floor(Math.random()*100000),
+    subject: r['Subject'] || '',
+    details: r['Details'] || '',
+    date: r['Date'] || r['Timestamp'] || ''
+  }));
+  saveLocal(SECTIONS.pni.key, mapped);
+  renderList('pni');
+}
       saveLocal(SECTIONS.pni.key, mapped);
       renderList('pni');
     } else if(tab === 'ChatBoard'){
