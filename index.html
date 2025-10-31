@@ -158,23 +158,44 @@
 
 </header>
 
-    <div class="grid" id="dashboard">
-      <!-- Cards dynamically load here -->
-    </div>
+   .dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
 
-    <div class="footer">
-      Tip: Use Monthly Report to export all sections into one PDF.<br>
-      &copy; 2025 SeaCrew Dashboard.
-    </div>
-  </div>
+.card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.card h3 {
+  color: #002B5B;
+  margin-bottom: 0.5rem;
+}
+
 <script>
 // =============================
 // ⚓ CONFIGURATION
 // =============================
-const scriptURL = "https://script.google.com/macros/s/AKfycbwJ-QERqA2-s48nxw1kcnsKgEj_LKPDIds60xU7WqvW057WqgM_3KifPruYEJq8SDNayg/exec"; // Replace with your Google Apps Script Web App URL
-const sheetTabs = ["Vessel_Join", "Arrivals", "Updates", "Memo", "Training", "Pni"];
-let localData = JSON.parse(localStorage.getItem("routineData") || "{}");
-let activeSection = "Dashboard";
+const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx123abcXYZ/exec";
+
+async function saveToGoogleSheet(sheetName, rowData) {
+  try {
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL + "?sheetName=" + sheetName, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rowData),
+    });
+    console.log("Data sent to Google Sheets:", sheetName, rowData);
+  } catch (err) {
+    console.error("Failed to send to Google Sheets:", err);
+  }
+}
+
 
 // =============================
 // ⚓ INITIALIZATION
