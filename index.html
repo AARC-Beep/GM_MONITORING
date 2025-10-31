@@ -431,35 +431,35 @@ function addEntry(sectionShort){
 
   // collect fields (match your server's expected names)
   if(sectionShort === 'vj'){
-    item.vessel = document.getElementById('vjVessel').value.trim();
-    item.port = document.getElementById('vjPort').value.trim();
-    item.noCrew = document.getElementById('vjNo').value.trim();
-    item.rank = document.getElementById('vjRank').value.trim();
-    item.date = document.getElementById('vjDate').value;
-    item.flight = document.getElementById('vjFlight').value.trim();
+    item["Vessel"] = document.getElementById("vjVessel").value.trim();
+    item["Port"] = document.getElementById("vjPort").value.trim();
+    item["No. of Crew"] = document.getElementById("vjNo").value.trim();
+    item["Rank"] = document.getElementById("vjRank").value.trim();
+    item["Date"] = document.getElementById("vjDate").value;
+    item["Flight"] = document.getElementById("vjFlight").value.trim();
   } else if(sectionShort === 'ac'){
-    item.vessel = document.getElementById('acVessel').value.trim();
-    item.port = document.getElementById('acPort').value.trim();
-    item.noCrew = document.getElementById('acNo').value.trim();
-    item.rank = document.getElementById('acRank').value.trim();
-    item.date = document.getElementById('acDate').value;
-    item.flight = document.getElementById('acFlight').value.trim();
+    item["Vessel"] = document.getElementById('acVessel').value.trim();
+    item["Port"] document.getElementById('acPort').value.trim();
+    item["No. of Crew"] = document.getElementById('acNo').value.trim();
+    item["Rank"] = document.getElementById('acRank').value.trim();
+    item["Date"] = document.getElementById('acDate').value;
+    item["Flight"]= document.getElementById('acFlight').value.trim();
   } else if(sectionShort === 'du'){
-    item.title = document.getElementById('duTitle').value.trim();
-    item.details = document.getElementById('duDetails').value.trim();
-    item.date = document.getElementById('duDate').value;
+    item.["Title"] = document.getElementById('duTitle').value.trim();
+    item.["Details"] = document.getElementById('duDetails').value.trim();
+    item.["Date"] = document.getElementById('duDate').value;
   } else if(sectionShort === 'memo'){
-    item.title = document.getElementById('mTitle').value.trim();
-    item.details = document.getElementById('mDetails').value.trim();
-    item.date = document.getElementById('mDate').value;
+    item.["Title"] = document.getElementById('mTitle').value.trim();
+    item.["Details"] = document.getElementById('mDetails').value.trim();
+    item.["Date"] = document.getElementById('mDate').value;
   } else if(sectionShort === 'tr'){
-    item.subject = document.getElementById('tSubject').value.trim();
-    item.details = document.getElementById('tDetails').value.trim();
-    item.date = document.getElementById('tDate').value;
+    item.["Subject"] = document.getElementById('tSubject').value.trim();
+    item.["Details"] = document.getElementById('tDetails').value.trim();
+    item.["Date"] = document.getElementById('tDate').value;
   } else if(sectionShort === 'pni'){
-    item.subject = document.getElementById('pSubject').value.trim();
-    item.details = document.getElementById('pDetails').value.trim();
-    item.date = document.getElementById('pDate').value;
+    item.["Subject"] = document.getElementById('pSubject').value.trim();
+    item.["Details"] = document.getElementById('pDetails').value.trim();
+    item.["Date"] = document.getElementById('pDate').value;
   }
 
   // minimal validation
