@@ -352,7 +352,7 @@ function loadLocal(key){ return JSON.parse(localStorage.getItem(key) || "[]"); }
 
 /* ---------- utility ---------- */
 function fmtDate(d){ if(!d) return ""; const dt=new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString(); }
-function escapeHtml(unsafe){ if(!unsafe && unsafe !== 0) return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+function escapeHtml(unsafe){ if(!unsafe && unsafe !== 0) return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;"); }
 
 /* ---------- Navigation ---------- */
 function navTo(e, id){
@@ -374,7 +374,7 @@ async function callServerGet(sheetName){
   if(!SCRIPT_URL) return [];
   try{
     const url = SCRIPT_URL + '?sheet=' + encodeURIComponent(sheetName);
-    const res = await fetch(url);
+    const res = await fetch(url, { method: 'GET' });
     if(!res.ok) throw new Error('fetch failed: ' + res.status);
     const json = await res.json();
     // older script may return array directly, support both shapes:
@@ -972,9 +972,18 @@ function printSectionPDF(sectionId, filename, all=false){
   doc.save(`${filename}.pdf`);
 }
 
+/* sticky note save */
+function saveSticky(){
+  const val = document.getElementById('stickyNote').value || '';
+  localStorage.setItem('stickyNote', val);
+  alert('Saved locally');
+}
+
 /* ---------- Init ---------- */
 function init(){
   wireUpButtons();
+  // populate sticky note
+  const saved = localStorage.getItem('stickyNote'); if(saved) document.getElementById('stickyNote').value = saved;
   // render any existing local data
   Object.keys(SECTIONS).forEach(k=>{
     if(k==='chat') return;
@@ -982,7 +991,7 @@ function init(){
   });
   // load chat from server
   loadChat().catch(()=>{});
-  // initial sync from server
+  // initial sync from server (overwrite local)
   syncFromSheet().catch(()=>{});
   // auto-sync every 15s
   setInterval(()=>{ syncFromSheet().catch(()=>{}); retryLocalAppends().catch(()=>{}); }, 15000);
@@ -996,4 +1005,3 @@ window.addEventListener('DOMContentLoaded', init);
 
 </body>
 </html>
-
