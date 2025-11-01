@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>SeaCrew Dashboard — Daily Routine Log</title>
+<title>SeaCrew Dashboard — Daily Routine Log (JSONP)</title>
 
 <!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -332,7 +332,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 <!-- ================= SCRIPTS ================= -->
 <script>
 /* ============ CONFIG ============ */
-/* Replace with your deployed Google Apps Script Web App URL (you confirmed this) */
+/* Replace with your deployed Google Apps Script Web App URL (JSONP-enabled) */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3uVvV_eXrAplkY8zi89gWqr2QIggBr-ZgYTuNW0E0eAoRSxp3jtXLrkqVfjW_CfQ3SQ/exec';
 
 /* storage keys and sheet tab mapping */
@@ -358,29 +358,72 @@ function escapeHtml(unsafe){ if(!unsafe && unsafe !== 0) return ''; return Strin
 function navTo(e, id){
   e && e.preventDefault();
   document.querySelectorAll('.section').forEach(s=>s.style.display='none');
-  document.getElementById(id).style.display='block';
+  const el = document.getElementById(id);
+  if(el) el.style.display='block';
   document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
-  const el = Array.from(document.querySelectorAll('.sidebar a')).find(a=>a.dataset.target===id);
-  if(el) el.classList.add('active');
+  const idx = Array.from(document.querySelectorAll('.sidebar a')).find(a=>a.dataset.target===id);
+  if(idx) idx.classList.add('active');
 }
 function navToElement(id){ navTo(null,id); window.scrollTo({top:0,behavior:'smooth'}); }
 
 /* ---------- edit state ---------- */
 const editState = { vj:null, ac:null, du:null, memo:null, tr:null, pni:null };
 
-/* ---------- Server calls ---------- */
-/* callServerGet expects your doGet to return JSON { data: [...] } */
+/* ===========================
+   JSONP HELPER (works with Apps Script that returns JSON wrapped in callback)
+   - jsonpRequest(url, params, timeoutMs)
+   - callServerGet(sheetName)
+   - callServerAppend(sheetName, rowObj)
+   =========================== */
+
+function jsonpRequest(baseUrl, params = {}, timeoutMs = 8000){
+  return new Promise((resolve, reject) => {
+    const callbackName = '__jsonp_cb_' + Math.floor(Math.random()*1e9);
+    params['callback'] = callbackName;
+    const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+    const src = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + qs;
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+
+    let timedOut = false;
+    const timer = setTimeout(()=> {
+      timedOut = true;
+      cleanup();
+      reject(new Error('JSONP timeout'));
+    }, timeoutMs);
+
+    function cleanup(){
+      clearTimeout(timer);
+      try { delete window[callbackName]; } catch(e){}
+      if(script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = function(data){
+      if(timedOut) return;
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = function(err){
+      cleanup();
+      reject(new Error('JSONP script error'));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
+/* ---------- Server calls (JSONP) ---------- */
+/* callServerGet expects your doGet to accept ?sheet=SheetName and return JSONP callback with { data: [...] } */
 async function callServerGet(sheetName){
   if(!SCRIPT_URL) return [];
   try{
-    const url = SCRIPT_URL + '?sheet=' + encodeURIComponent(sheetName);
-    const res = await fetch(url, { method: 'GET' });
-    if(!res.ok) throw new Error('fetch failed: ' + res.status);
-    const json = await res.json();
-    // older script may return array directly, support both shapes:
-    if(Array.isArray(json)) return json;
-    if(json && Array.isArray(json.data)) return json.data;
-    // If response shape unknown, return []
+    const res = await jsonpRequest(SCRIPT_URL, { sheet: sheetName }, 10000);
+    if(!res) return [];
+    if(Array.isArray(res)) return res;
+    if(res && Array.isArray(res.data)) return res.data;
     return [];
   } catch(err){
     console.warn('callServerGet error', err);
@@ -388,22 +431,17 @@ async function callServerGet(sheetName){
   }
 }
 
-/* callServerAppend sends an object whose keys match your sheet headers.
-   The server doPost will map headers to values based on those keys. */
+/* callServerAppend sends fields as query params via JSONP GET.
+   Your Apps Script doGet must support writing when parameters are included,
+   or you must have a special handler to accept write requests via GET. */
 async function callServerAppend(sheetName, rowObj){
   if(!SCRIPT_URL) throw new Error('SCRIPT_URL not set');
   try {
-    // Build payload shaped so Apps Script can map header names to values:
-    // We'll send { sheet: sheetName, ...fields }
-    const payload = Object.assign({}, rowObj, { sheet: sheetName });
-    const res = await fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok) throw new Error('append failed: '+res.status);
-    const json = await res.json().catch(()=>null);
-    return json || null;
+    // Build params object where keys are header names
+    const params = Object.assign({}, rowObj, { sheet: sheetName });
+    // JSONP GET append: server must read query params and perform append, then return JSON.
+    const res = await jsonpRequest(SCRIPT_URL, params, 10000);
+    return res || null;
   } catch(err){
     console.warn('append failed', err);
     throw err;
