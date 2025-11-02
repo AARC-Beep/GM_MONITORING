@@ -962,7 +962,7 @@ async function syncFromSheet(){
 
     } else if(tab === 'Arrivals'){
       mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
+        id: r["UID"] || r["Uid"] || r["uid"] || r["Date"] || r["Timestamp"],
         vessel: r['Vessel'] || '',
         port: r['Port'] || '',
         noCrew: r['No. of Crew'] || r['No of Crew'] || '',
