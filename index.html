@@ -59,6 +59,7 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
   <a href="#" data-target="memo" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
   <a href="#" data-target="training" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
   <a href="#" data-target="pni" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&amp;I / Events</a>
+  <a href="#" data-target="helpSection" onclick="navTo(event,'helpSection')"> <i class="fa-solid fa-circle-question"></i> Help / User Guide</a>
 
   <hr style="border-color:rgba(255,255,255,0.06)"/>
 
@@ -315,6 +316,81 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
         <button class="btn btn-danger btn-sm" onclick="deleteEntry('Pni', ${index})">Delete</button>
       </div>
     </div>
+    <!-- HELP / USER GUIDE -->
+<section id="helpSection" class="section" style="display:none">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h4>User Guide / Help</h4>
+    <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('helpSection','User_Guide')">
+      Export PDF
+    </button>
+  </div>
+
+  <div class="card-slim" style="font-size:14px; line-height:1.5">
+    <h5>SeaCrew Dashboard — Daily Routine Log</h5>
+    <p>This dashboard is used for daily crewing operations, updates, memos, training logs, P&I events, and team communication via the ChatBoard.</p>
+
+    <h6>📌 General Rules:</h6>
+    <ul>
+      <li>No Gmail required to view entries.</li>
+      <li>Only logged-in users can post in ChatBoard.</li>
+      <li>All entries sync automatically every 15 seconds.</li>
+      <li>If offline, entries save locally and auto-sync later.</li>
+    </ul>
+
+    <h6>📋 Sections Overview:</h6>
+    <ul>
+      <li><strong>Vessel Crew Joining</strong> – Log outgoing crew, flights, schedules.</li>
+      <li><strong>Arrivals</strong> – Log arriving crew, port, flight, dates.</li>
+      <li><strong>Daily Updates</strong> – Add day-to-day operational updates.</li>
+      <li><strong>Memo</strong> – Internal memos and reminders.</li>
+      <li><strong>Training</strong> – Training sessions conducted for seafarers.</li>
+      <li><strong>P&I / Events</strong> – Medical, incident, or relevant events.</li>
+      <li><strong>ChatBoard</strong> – Public daily communication log.</li>
+    </ul>
+
+    <h6>🖥 How to Use:</h6>
+    <ol>
+      <li>Select a section from the left menu.</li>
+      <li>Fill in the fields and click <strong>Add</strong>.</li>
+      <li>Data will appear instantly in the list.</li>
+      <li>Green = saved locally | Blue = synced to Google Sheet.</li>
+      <li>Click <strong>Edit</strong> to modify or <strong>Delete</strong> to remove entry.</li>
+    </ol>
+
+    <h6>☁ Sync Behavior:</h6>
+    <ul>
+      <li>Dashboard syncs every <strong>15 seconds</strong>.</li>
+      <li>If Google Apps Script is slow, entries remain local until retried.</li>
+    </ul>
+
+    <h6>📄 PDF Reports:</h6>
+    <ul>
+      <li>Each section can export its own PDF.</li>
+      <li>The Dashboard has a <strong>Monthly PDF</strong> option.</li>
+      <li>PDFs are landscape, font size 8, with GM signature block.</li>
+    </ul>
+
+    <h6>🔒 Access:</h6>
+    <ul>
+      <li>Anyone can view the dashboard link.</li>
+      <li>ChatBoard posting requires login (Phase 2 feature).</li>
+    </ul>
+
+    <h6>✅ Notes:</h6>
+    <ul>
+      <li>If something is not syncing, click <strong>Sync Now</strong>.</li>
+      <li>You can clear local data without affecting the Google Sheet.</li>
+      <li>Browser cache must be cleared after updates to the app.</li>
+    </ul>
+
+    <br>
+    <h6>✍ Prepared by:</h6>
+    <strong>TIWALA Human Resources Inc.</strong><br>
+    SeaCrew Dashboard Development Team
+    <br><br>
+    <em>For support contact: IT@tiwala.com</em>
+  </div>
+</section>
 
     <div class="card-slim mb-3">
       <div class="form-row">
