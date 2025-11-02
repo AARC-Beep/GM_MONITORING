@@ -1221,6 +1221,26 @@ function printSectionPDF(sectionId, filename, all=false){
   doc.save(filename + ".pdf");
 }
 
+  function generateSectionPDF(doc, sectionTitle, list, headers, rowMapper){
+  if(!list || list.length === 0) return;
+
+  doc.addPage("landscape");
+
+  doc.setFontSize(12);
+  doc.text(sectionTitle, 14, 18);
+
+  const rows = list.map(rowMapper);
+
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 26,
+    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [230, 230, 230] }
+  });
+}
+
 /* sticky note save */
 function saveSticky(){
   const val = document.getElementById('stickyNote').value || '';
