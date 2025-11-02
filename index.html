@@ -1099,108 +1099,123 @@ async function retryLocalAppends(){
 
 function printSectionPDF(sectionId, filename, all=false){
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'portrait'});
+  const doc = new jsPDF({orientation:'landscape'});
+  let y = 14;
 
-  // Title
-  doc.setFontSize(16);
-  doc.text(filename.replace(/_/g, " "), 14, 14);
+  doc.setFontSize(14);
+  doc.text("SeaCrew Monthly Report", 14, y);
+  y += 10;
 
-  // Determine section
+  // ---------------------------------------------------
+  // ✅ MONTHLY REPORT – ALL SECTIONS
+  // ---------------------------------------------------
+  if(all){
+    generateSectionPDF(doc, "Vessel Crew Joining", loadLocal(SECTIONS.vj.key), ["Vessel","Port","No. Crew","Rank","Date","Flight"], (r)=>[
+      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
+    ]);
+
+    generateSectionPDF(doc, "Arriving Crew", loadLocal(SECTIONS.ac.key), ["Vessel","Port","No. Crew","Rank","Arrival","Flight"], (r)=>[
+      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
+    ]);
+
+    generateSectionPDF(doc, "Daily Updates", loadLocal(SECTIONS.du.key), ["Title","Details","Date"], (r)=>[
+      r.title, r.details, fmtDate(r.date)
+    ]);
+
+    generateSectionPDF(doc, "Memo", loadLocal(SECTIONS.memo.key), ["Title","Details","Date"], (r)=>[
+      r.title, r.details, fmtDate(r.date)
+    ]);
+
+    generateSectionPDF(doc, "Training", loadLocal(SECTIONS.tr.key), ["Subject","Details","Date"], (r)=>[
+      r.subject, r.details, fmtDate(r.date)
+    ]);
+
+    generateSectionPDF(doc, "P&I Events", loadLocal(SECTIONS.pni.key), ["Subject","Details","Date"], (r)=>[
+      r.subject, r.details, fmtDate(r.date)
+    ]);
+
+    // ---------------------------------------------------
+    // ✅ ADD SIGNATURE BLOCK FOR GM
+    // ---------------------------------------------------
+    doc.addPage("landscape");
+
+    doc.setFontSize(12);
+    doc.text("Prepared By:", 14, 30);
+    doc.setFontSize(14);
+    doc.text("__________________________________", 14, 50);
+    doc.text("General Manager", 14, 58);
+
+    doc.save(filename + ".pdf");
+    return;
+  }
+
+  // ---------------------------------------------------
+  // ✅ SINGLE-SECTION REPORT
+  // ---------------------------------------------------
   const short = mapSectionIdToShort(sectionId);
-  if(!short) return alert("Unknown section.");
-
+  if(!short){ alert("Unknown section"); return; }
   const list = loadLocal(SECTIONS[short].key);
+
   if(!list || list.length === 0){
     alert("No entries to print.");
     return;
   }
 
-  // ---------------------------
-  // ✅ Table HEADER per section
-  // ---------------------------
+  doc.setFontSize(14);
+  doc.text(filename.replace(/_/g, " "), 14, 20);
+
   let headers = [];
   let rows = [];
 
-  if(short === "vj"){
+  if(short === 'vj'){
     headers = ["Vessel","Port","No. Crew","Rank","Date","Flight"];
     rows = list.map(r => [
-      r.vessel,
-      r.port,
-      r.noCrew,
-      r.rank,
-      fmtDate(r.date),
-      r.flight || ""
+      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
     ]);
   }
 
-  else if(short === "ac"){
+  if(short === 'ac'){
     headers = ["Vessel","Port","No. Crew","Rank","Arrival","Flight"];
     rows = list.map(r => [
-      r.vessel,
-      r.port,
-      r.noCrew,
-      r.rank,
-      fmtDate(r.date),
-      r.flight || ""
+      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
     ]);
   }
 
-  else if(short === "du"){
+  if(short === 'du'){
     headers = ["Title","Details","Date"];
     rows = list.map(r => [
-      r.title,
-      r.details,
-      fmtDate(r.date)
+      r.title, r.details, fmtDate(r.date)
     ]);
   }
 
-  else if(short === "memo"){
+  if(short === 'memo'){
     headers = ["Title","Details","Date"];
     rows = list.map(r => [
-      r.title,
-      r.details,
-      fmtDate(r.date)
+      r.title, r.details, fmtDate(r.date)
     ]);
   }
 
-  else if(short === "tr"){
+  if(short === 'tr'){
     headers = ["Subject","Details","Date"];
     rows = list.map(r => [
-      r.subject,
-      r.details,
-      fmtDate(r.date)
+      r.subject, r.details, fmtDate(r.date)
     ]);
   }
 
-  else if(short === "pni"){
+  if(short === 'pni'){
     headers = ["Subject","Details","Date"];
     rows = list.map(r => [
-      r.subject,
-      r.details,
-      fmtDate(r.date)
+      r.subject, r.details, fmtDate(r.date)
     ]);
   }
 
-  // ------------------------------------
-  // ✅ Generate the table using autoTable
-  // ------------------------------------
   doc.autoTable({
     head: [headers],
     body: rows,
-    startY: 22,
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-      overflow: 'linebreak'
-    },
-    headStyles: {
-      fillColor: [0, 51, 102],   // Dark blue
-      textColor: 255,
-      fontStyle: 'bold'
-    },
-    alternateRowStyles: {
-      fillColor: [240, 240, 240]
-    }
+    startY: 28,
+    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [240, 240, 240] }
   });
 
   doc.save(filename + ".pdf");
