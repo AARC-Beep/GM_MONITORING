@@ -1097,30 +1097,113 @@ async function retryLocalAppends(){
   await syncFromSheet();
 }
 
-/* ---------- PDF export (simple) ---------- */
 function printSectionPDF(sectionId, filename, all=false){
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'landscape'});
-  doc.setFontSize(14);
-  if(all){
-    doc.text('SeaCrew Monthly Report', 14, 16);
-    doc.save(`${filename}.pdf`);
+  const doc = new jsPDF({orientation:'portrait'});
+
+  // Title
+  doc.setFontSize(16);
+  doc.text(filename.replace(/_/g, " "), 14, 14);
+
+  // Determine section
+  const short = mapSectionIdToShort(sectionId);
+  if(!short) return alert("Unknown section.");
+
+  const list = loadLocal(SECTIONS[short].key);
+  if(!list || list.length === 0){
+    alert("No entries to print.");
     return;
   }
-  const short = mapSectionIdToShort(sectionId);
-  if(!short) return alert('Unknown section for PDF');
-  const list = loadLocal(SECTIONS[short].key);
-  if(!list || list.length===0){ alert('No entries to print'); return; }
-  doc.setFontSize(16); doc.text(filename.replace(/_/g,' '), 14, 16);
-  let y = 24;
-  list.forEach((r, idx)=>{
-    const text = JSON.stringify(r);
-    doc.setFontSize(10);
-    doc.text(text, 14, y);
-    y += 6;
-    if(y > 170){ doc.addPage(); y = 16; }
+
+  // ---------------------------
+  // ✅ Table HEADER per section
+  // ---------------------------
+  let headers = [];
+  let rows = [];
+
+  if(short === "vj"){
+    headers = ["Vessel","Port","No. Crew","Rank","Date","Flight"];
+    rows = list.map(r => [
+      r.vessel,
+      r.port,
+      r.noCrew,
+      r.rank,
+      fmtDate(r.date),
+      r.flight || ""
+    ]);
+  }
+
+  else if(short === "ac"){
+    headers = ["Vessel","Port","No. Crew","Rank","Arrival","Flight"];
+    rows = list.map(r => [
+      r.vessel,
+      r.port,
+      r.noCrew,
+      r.rank,
+      fmtDate(r.date),
+      r.flight || ""
+    ]);
+  }
+
+  else if(short === "du"){
+    headers = ["Title","Details","Date"];
+    rows = list.map(r => [
+      r.title,
+      r.details,
+      fmtDate(r.date)
+    ]);
+  }
+
+  else if(short === "memo"){
+    headers = ["Title","Details","Date"];
+    rows = list.map(r => [
+      r.title,
+      r.details,
+      fmtDate(r.date)
+    ]);
+  }
+
+  else if(short === "tr"){
+    headers = ["Subject","Details","Date"];
+    rows = list.map(r => [
+      r.subject,
+      r.details,
+      fmtDate(r.date)
+    ]);
+  }
+
+  else if(short === "pni"){
+    headers = ["Subject","Details","Date"];
+    rows = list.map(r => [
+      r.subject,
+      r.details,
+      fmtDate(r.date)
+    ]);
+  }
+
+  // ------------------------------------
+  // ✅ Generate the table using autoTable
+  // ------------------------------------
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 22,
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+      overflow: 'linebreak'
+    },
+    headStyles: {
+      fillColor: [0, 51, 102],   // Dark blue
+      textColor: 255,
+      fontStyle: 'bold'
+    },
+    alternateRowStyles: {
+      fillColor: [240, 240, 240]
+    }
   });
-  doc.save(`${filename}.pdf`);
+
+  doc.save(filename + ".pdf");
 }
 
 /* sticky note save */
