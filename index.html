@@ -306,17 +306,20 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
     <div id="t_list" class="card-slim"></div>
   </section>
 
-  <!-- PnI -->
-  <section id="pni" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>P&amp;I / Events</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteEntry('Pni', ${index})">Delete</button>
-      </div>
+ <!-- PnI -->
+<section id="pni" class="section" style="display:none">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h4>P&amp;I / Events</h4>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
     </div>
-   <!-- HELP / USER GUIDE -->
+  </div>
+
+  <div id="p_list"></div>
+</section>
+
+ <!-- HELP / USER GUIDE -->
 <section id="helpSection" class="section" style="display:none">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h4>User Guide / Help</h4>
@@ -325,70 +328,33 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
     </button>
   </div>
 
-  <div class="card-slim" style="font-size:14px; line-height:1.5">
-    <h5>SeaCrew Dashboard — Daily Routine Log</h5>
-    <p>This dashboard is used for daily crewing operations, updates, memos, training logs, P&amp;I events, and team communication via the ChatBoard.</p>
+  <div class="card-slim" style="font-size:14px; line-height:1.6; padding:15px;">
+    <h5>SeaCrew Dashboard — User Guide</h5>
+    <p>Welcome to the SeaCrew Monitoring System. This guide explains how to operate every module.</p>
 
-    <h6>📌 General Rules:</h6>
-    <ul>
-      <li>No Gmail required to view entries.</li>
-      <li>Only logged-in users can post in ChatBoard.</li>
-      <li>All entries sync automatically every 15 seconds.</li>
-      <li>If offline, entries save locally and auto-sync later.</li>
-    </ul>
+    <h6>1. Vessel Joining</h6>
+    <p>Use this section to record outgoing crew details…</p>
 
-    <h6>📋 Sections Overview:</h6>
-    <ul>
-      <li><strong>Vessel Crew Joining</strong> – Log outgoing crew, flights, schedules.</li>
-      <li><strong>Arrivals</strong> – Log arriving crew, port, flight, dates.</li>
-      <li><strong>Daily Updates</strong> – Add day-to-day operational updates.</li>
-      <li><strong>Memo</strong> – Internal memos and reminders.</li>
-      <li><strong>Training</strong> – Training sessions conducted for seafarers.</li>
-      <li><strong>P&amp;I / Events</strong> – Medical, incident, or relevant events.</li>
-      <li><strong>ChatBoard</strong> – Public daily communication log.</li>
-    </ul>
+    <h6>2. Arriving Crew</h6>
+    <p>Records incoming crew data…</p>
 
-    <h6>🖥 How to Use:</h6>
-    <ol>
-      <li>Select a section from the left menu.</li>
-      <li>Fill in the fields and click <strong>Add</strong>.</li>
-      <li>Your entry appears instantly in the list.</li>
-      <li>Green = saved locally | Blue = synced with Google Sheet.</li>
-      <li>Click <strong>Edit</strong> to modify or <strong>Delete</strong> to remove entry.</li>
-    </ol>
+    <h6>3. Daily Updates</h6>
+    <p>For general internal updates…</p>
 
-    <h6>☁ Sync Behavior:</h6>
-    <ul>
-      <li>Dashboard syncs every <strong>15 seconds</strong>.</li>
-      <li>If Google Apps Script is slow, entries remain local until retried.</li>
-    </ul>
+    <h6>4. Memo</h6>
+    <p>Upload and share memos…</p>
 
-    <h6>📄 PDF Reports:</h6>
-    <ul>
-      <li>Each section has its own PDF export button.</li>
-      <li>The dashboard has a <strong>Monthly PDF</strong> option.</li>
-      <li>PDF uses landscape layout with font size 8 and signature area.</li>
-    </ul>
+    <h6>5. Training</h6>
+    <p>Record training activity…</p>
 
-    <h6>🔒 Access:</h6>
-    <ul>
-      <li>Anyone can view the dashboard link.</li>
-      <li>ChatBoard posting requires login (Phase 2).</li>
-    </ul>
+    <h6>6. P&amp;I Events</h6>
+    <p>Incident or event reporting…</p>
 
-    <h6>✅ Notes:</h6>
-    <ul>
-      <li>If something is not syncing, click <strong>Sync Now</strong>.</li>
-      <li>You can clear local data without affecting the Google Sheet.</li>
-      <li>Clear browser cache when updating the app.</li>
-    </ul>
+    <h6>7. Chatboard</h6>
+    <p>All employees can post messages…</p>
 
-    <br>
-    <h6>✍ Prepared by:</h6>
-    <strong>TIWALA Human Resources Inc.</strong><br>
-    SeaCrew Dashboard Development Team
-    <br><br>
-    <em>For support contact: IT@tiwala.com</em>
+    <hr>
+    <p class="small-note">For support, contact GM AARC.</p>
   </div>
 </section>
 
