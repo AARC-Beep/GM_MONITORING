@@ -184,30 +184,34 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 
   <!-- ---------- Sections: Vessel Join / Arrivals / Updates / Memo / Training / PNI ---------- -->
   <!-- Vessel Join -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Vessel Crew Joining</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
-      </div>
-    </div>
+ <section id="vesselJoin" class="section" style="display:none">
 
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="vjVessel">
-        <input class="form-control" placeholder="Port" id="vjPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
-        <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
-        <input class="form-control" placeholder="Flight" id="vjFlight">
-        <button class="btn btn-success" id="vjAddBtn">Add</button>
-        <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-      </div>
+  <!-- header buttons -->
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h4>Vessel Crew Joining</h4>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
+      <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
     </div>
+  </div>
 
-    <div id="vj_list" class="card-slim"></div>
-  </section>
+  <div class="card-slim mb-3">
+    <div class="form-row">
+      <input class="form-control" placeholder="Vessel" id="vjVessel">
+      <input class="form-control" placeholder="Port" id="vjPort">
+      <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
+      <input class="form-control" placeholder="Rank" id="vjRank">
+      <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
+      <input class="form-control" placeholder="Flight" id="vjFlight">
+
+      <button class="btn btn-success" id="vjAddBtn">Add</button>
+      <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div id="vj_list" class="card-slim"></div>
+
+</section>
 
   <!-- Arriving Crew -->
   <section id="arrivingCrew" class="section" style="display:none">
