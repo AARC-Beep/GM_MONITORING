@@ -804,20 +804,43 @@ function mapSectionIdToShort(sectionId){
   return null;
 }
 
-/* delete entry locally */
+/* delete entry locally AND on server if UID exists */
 function deleteEntry(sectionShort, id){
   const meta = SECTIONS[sectionShort];
   const key = meta.key;
   let list = loadLocal(key);
-  const idx = list.findIndex(x=>x.id === id);
-  if(idx === -1) return;
-  if(!confirm('Delete this entry?')) return;
-  // remove locally
-  list.splice(idx,1);
+  const idx = list.findIndex(x => x.id === id);
+  if (idx === -1) return;
+
+  if (!confirm('Delete this entry?')) return;
+
+  // ✅ get uid before removal
+  const uid = list[idx].uid || list[idx].UID || null;
+
+  // ✅ remove locally
+  list.splice(idx, 1);
   saveLocal(key, list);
   renderList(sectionShort);
-  // NOTE: server delete not implemented in server; implement server-side delete if required
+
+  // ✅ notify server only if UID exists
+  if (uid) {
+    jsonpRequest({
+      action: 'delete',
+      sheet: meta.sheet,       // example: Vessel_Join, Arrivals, etc.
+      uid: uid                 // unique ID used on server
+    }, 9000)
+    .then(res => {
+      console.log('✅ server delete OK:', res);
+
+      // refresh local copy with server truth
+      syncFromSheet().catch(()=>{});
+    })
+    .catch(err => {
+      console.warn('⚠ server delete failed; will retry next sync', err);
+    });
+  }
 }
+
 
 /* start edit (local) */
 function startEdit(sectionShort, id){
