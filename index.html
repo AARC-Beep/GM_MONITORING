@@ -679,10 +679,25 @@ function addEntry(sectionShort){
 function renderList(sectionShort){
   const meta = SECTIONS[sectionShort];
   const key = meta.key;
-  const list = loadLocal(key);
+
+  // ✅ Filter out blank / corrupted entries
+  const list = loadLocal(key).filter(ep =>
+    ep &&
+    (
+      ep.vessel ||
+      ep.port ||
+      ep.title ||
+      ep.subject ||
+      ep.details ||
+      ep.name ||
+      ep.message
+    )
+  );
+
   const idMap = { vj: 'vj_list', ac: 'ac_list', du: 'du_list', memo: 'm_list', tr: 't_list', pni: 'p_list' };
   const containerEl = document.getElementById(idMap[sectionShort]);
   if(!containerEl) return;
+
   containerEl.innerHTML = '';
 
   list.forEach(ep => {
