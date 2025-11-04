@@ -400,25 +400,6 @@ function callServer(url) {
   });
 }
 
-// ✅ Delete entry BOTH locally and on Google Sheet
-async function deleteEntry(sheetName, index) {
-  // 1. Remove local copy
-  localDelete(sheetName, index);
-
-  // 2. Remove on server
-  let url = `${SCRIPT_URL}?action=delete&sheet=${sheetName}&index=${index}`;
-
-  try {
-    await callServer(url);
-    console.log("✅ Server row deleted");
-  } catch (e) {
-    console.error("❌ Delete error:", e);
-  }
-
-  // 3. Refresh section to avoid duplicates
-  manualSync();
-}
-
 // ✅ Local delete function (must exist)
 function localDelete(sheetName, index) {
   let data = JSON.parse(localStorage.getItem(sheetName) || "[]");
