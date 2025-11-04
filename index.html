@@ -374,923 +374,561 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- PART 3: AMENDED JAVASCRIPT (UID-based hybrid sync) -->
-<script>
+/* ============================================
+ PART 3 — RENDER LIST / EDIT / DELETE / PREVIEW
+ For Vessel Join, Arrivals, Updates, Memo, Training, PNI
+ ============================================ */
 
-// ============ CONFIG ============
-// Replace with your deployed Google Apps Script Web App URL (JSONP-enabled doGet).
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkykBFEZTIWUZcsCM2Lb0_bUaqGKAQWzxK-2f4IrpP6ekN9iuh6gpGrCSeNU6uvYhc/exec";
-/* storage keys and sheet tab mapping */
+/* Section mapping */
 const SECTIONS = {
   vj: { key:'vesselJoin', sheet:'Vessel_Join' },
   ac: { key:'arrivingCrew', sheet:'Arrivals' },
   du: { key:'dailyUpdates', sheet:'Updates' },
-  memo: { key:'memo', sheet:'Memo' },
-  tr: { key:'training', sheet:'Training' },
-  pni: { key:'pni', sheet:'Pni' },
-  chat: { key:'chatboard', sheet:'ChatBoard' }, // chatboard mapping
+  memo:{ key:'memo', sheet:'Memo' },
+  tr:  { key:'training', sheet:'Training' },
+  pni: { key:'pni', sheet:'Pni' }
 };
 
-/* ---------- local storage helpers ---------- */
-function saveLocal(key, arr){ localStorage.setItem(key, JSON.stringify(arr || [])); }
-function loadLocal(key){ return JSON.parse(localStorage.getItem(key) || "[]"); }
-
-/* ---------- utility ---------- */
-function fmtDate(d){ if(!d) return ""; const dt=new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString(); }
-function escapeHtml(unsafe){ if(!unsafe && unsafe !== 0) return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;"); }
-function makeUID(){ return 'UID-' + Date.now() + '-' + Math.floor(Math.random()*1000000); }
-
-/* ---------- Navigation ---------- */
-function navTo(e, id){
-  e && e.preventDefault();
-  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
-  const el = document.getElementById(id);
-  if(el) el.style.display='block';
-  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
-  const link = Array.from(document.querySelectorAll('.sidebar a')).find(a=>a.dataset.target===id);
-  if(link) link.classList.add('active');
-}
-function navToElement(id){ navTo(null,id); window.scrollTo({top:0,behavior:'smooth'}); }
-
-/* ---------- edit state ---------- */
-const editState = { vj:null, ac:null, du:null, memo:null, tr:null, pni:null };
-
-/* =========================
-   JSONP helper (returns Promise)
-   ========================= */
-let __jsonp_counter = 0;
-function jsonpRequest(params = {}, timeout = 9000) {
-  return new Promise((resolve, reject) => {
-    if(!SCRIPT_URL) return reject(new Error('SCRIPT_URL not set'));
-    __jsonp_counter++;
-    const cbName = '__jsonp_cb_' + Date.now() + '_' + __jsonp_counter;
-    params.callback = cbName;
-    const query = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
-    const src = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + query;
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = true;
-
-    let timer = setTimeout(()=> {
-      cleanup();
-      reject(new Error('JSONP timeout'));
-    }, timeout);
-
-    function cleanup(){
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
-      if(script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    window[cbName] = function(data){
-      cleanup();
-      resolve(data);
-    };
-
-    script.onerror = function(err){
-      cleanup();
-      reject(new Error('JSONP script error'));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-
-/* =========================
-   High-level server helpers (JSONP)
-   ========================= */
-
-/* callServerGet: returns array (or []) */
-async function callServerGet(sheetName){
+/* Load local */
+function loadLocal(key){
   try{
-    const resp = await jsonpRequest({ action: 'get', sheet: sheetName }, 9000);
-    if(!resp) return [];
-    if(resp.data && Array.isArray(resp.data)) return resp.data;
-    if(resp.success && resp.data && Array.isArray(resp.data)) return resp.data;
-    if(Array.isArray(resp)) return resp;
-    return [];
-  } catch(err){
-    console.warn('callServerGet error', err);
-    return [];
-  }
+    return JSON.parse(localStorage.getItem(key)) || [];
+  }catch(e){ return []; }
 }
 
-/* callServerAppend: uses action=append and supplies a JSON array string param 'row' */
-async function callServerAppend(sheetName, rowArray){
-  try{
-    if(!Array.isArray(rowArray)) throw new Error('append expects an array');
-    const resp = await jsonpRequest({ action: 'append', sheet: sheetName, row: JSON.stringify(rowArray) }, 9000);
-    return resp;
-  } catch(err){
-    console.warn('append failed', err);
-    throw err;
-  }
+/* Save local */
+function saveLocal(key, arr){
+  localStorage.setItem(key, JSON.stringify(arr));
 }
 
-/* Helper to build header-ordered arrays for known sheets (includes UID as last element) */
-function buildRowForSheet(sheetName, payloadObj){
-  // We include UID as the last column. Make sure your sheet headers include UID as last column.
-  if(sheetName === 'Vessel_Join' || sheetName === 'Arrivals'){
-    return [
-      payloadObj['Timestamp'] || '',
-      payloadObj['Vessel'] || '',
-      payloadObj['Port'] || '',
-      payloadObj['No. of Crew'] || payloadObj['No of Crew'] || '',
-      payloadObj['Rank'] || '',
-      payloadObj['Date'] || '',
-      payloadObj['Flight'] || '',
-      payloadObj['UID'] || ''   // <-- UID column (ensure header exists)
-    ];
-  }
-  if(sheetName === 'ChatBoard'){
-    return [
-      payloadObj['Timestamp'] || '',
-      payloadObj['Name'] || payloadObj['name'] || '',
-      payloadObj['Message'] || payloadObj['message'] || '',
-      payloadObj['Date'] || '',
-      payloadObj['UID'] || ''
-    ];
-  }
-  if(sheetName === 'Updates' || sheetName === 'Memo'){
-    return [
-      payloadObj['Timestamp'] || '',
-      payloadObj['Title'] || payloadObj['title'] || '',
-      payloadObj['Details'] || payloadObj['details'] || '',
-      payloadObj['Date'] || '',
-      payloadObj['UID'] || ''
-    ];
-  }
-  if(sheetName === 'Training' || sheetName === 'Pni'){
-    return [
-      payloadObj['Timestamp'] || '',
-      payloadObj['Subject'] || payloadObj['subject'] || '',
-      payloadObj['Details'] || payloadObj['details'] || '',
-      payloadObj['Date'] || '',
-      payloadObj['UID'] || ''
-    ];
-  }
-  // fallback: append UID at end
-  const arr = Object.values(payloadObj || {});
-  arr.push(payloadObj && payloadObj.UID ? payloadObj.UID : '');
-  return arr;
+/* Escape HTML */
+function escapeHtml(txt){
+  if(!txt) return "";
+  return txt.replace(/[&<>"]/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])
+  );
 }
 
-/* =========================
-   Add / Render / Edit / Delete (local + server append)
-   ========================= */
-function addEntry(sectionShort){
-  if(!(sectionShort in SECTIONS)) return;
-  const meta = SECTIONS[sectionShort];
-  const key = meta.key;
-  const list = loadLocal(key);
-
-  let item = { id: Date.now() };
-
-  // collect fields
-  if(sectionShort === 'vj'){
-    item.vessel = document.getElementById('vjVessel').value.trim();
-    item.port = document.getElementById('vjPort').value.trim();
-    item.noCrew = document.getElementById('vjNo').value.trim();
-    item.rank = document.getElementById('vjRank').value.trim();
-    item.date = document.getElementById('vjDate').value;
-    item.flight = document.getElementById('vjFlight').value.trim();
-  } else if(sectionShort === 'ac'){
-    item.vessel = document.getElementById('acVessel').value.trim();
-    item.port = document.getElementById('acPort').value.trim();
-    item.noCrew = document.getElementById('acNo').value.trim();
-    item.rank = document.getElementById('acRank').value.trim();
-    item.date = document.getElementById('acDate').value;
-    item.flight = document.getElementById('acFlight').value.trim();
-  } else if(sectionShort === 'du'){
-    item.title = document.getElementById('duTitle').value.trim();
-    item.details = document.getElementById('duDetails').value.trim();
-    item.date = document.getElementById('duDate').value;
-  } else if(sectionShort === 'memo'){
-    item.title = document.getElementById('mTitle').value.trim();
-    item.details = document.getElementById('mDetails').value.trim();
-    item.date = document.getElementById('mDate').value;
-  } else if(sectionShort === 'tr'){
-    item.subject = document.getElementById('tSubject').value.trim();
-    item.details = document.getElementById('tDetails').value.trim();
-    item.date = document.getElementById('tDate').value;
-  } else if(sectionShort === 'pni'){
-    item.subject = document.getElementById('pSubject').value.trim();
-    item.details = document.getElementById('pDetails').value.trim();
-    item.date = document.getElementById('pDate').value;
-  }
-
-  // minimal validation
-  if(sectionShort==='vj' && (!item.vessel || !item.port || !item.noCrew || !item.rank || !item.date)){
-    return alert('Please fill required fields for Vessel Joining (Vessel/Port/No of Crew/Rank/Date).');
-  }
-  if(sectionShort==='ac' && (!item.vessel || !item.port || !item.noCrew || !item.rank || !item.date)){
-    return alert('Please fill required fields for Arriving Crew (Vessel/Port/No of Crew/Rank/Date).');
-  }
-
-  // assign UID and mark as not yet synced
-  item.uid = makeUID();
-  item.synced = false; // will be set true after successful append
-  // Save locally first
-  list.push(item);
-  saveLocal(key, list);
-  renderList(sectionShort);
-  clearForm(sectionShort);
-
-  // Build payload matching your sheet headers as an ARRAY (includes UID)
-  let payloadArray = [];
-  if(sectionShort === 'vj' || sectionShort === 'ac'){
-    const payloadObj = { 'Timestamp':'', 'Vessel': item.vessel || '', 'Port': item.port || '', 'No. of Crew': item.noCrew || '', 'Rank': item.rank || '', 'Date': item.date || '', 'Flight': item.flight || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  } else if(sectionShort === 'du' || sectionShort === 'memo'){
-    const payloadObj = { 'Timestamp':'', 'Title': item.title || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  } else if(sectionShort === 'tr' || sectionShort === 'pni'){
-    const payloadObj = { 'Timestamp':'', 'Subject': item.subject || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  }
-
-  // Try to append to server (best-effort). On success mark local item as synced
-  callServerAppend(meta.sheet, payloadArray).then(res=>{
-    // mark the local item as synced
-    const localList = loadLocal(key);
-    const idx = localList.findIndex(x => x.uid === item.uid);
-    if(idx >= 0){
-      localList[idx].synced = true;
-      saveLocal(key, localList);
-    }
-    // refresh authoritative data from sheet
-    syncFromSheet().catch(()=>{});
-  }).catch(err=>{
-    console.warn('append failed, saved locally for retry on next sync', err);
-  });
+/* Format date */
+function fmtDate(d){
+  if(!d) return '';
+  return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 }
 
-/* render list UI */
+/* ============================================
+    RENDER LIST
+============================================ */
 function renderList(sectionShort){
   const meta = SECTIONS[sectionShort];
-  const key = meta.key;
+  const key  = meta.key;
 
-  // ✅ Filter out blank / corrupted entries
+  // Filter out corrupted
   const list = loadLocal(key).filter(ep =>
     ep &&
-    (
-      ep.vessel ||
-      ep.port ||
-      ep.title ||
-      ep.subject ||
-      ep.details ||
-      ep.name ||
-      ep.message
-    )
+    (ep.vessel || ep.title || ep.subject || ep.details || ep.port)
   );
 
-  const idMap = { vj: 'vj_list', ac: 'ac_list', du: 'du_list', memo: 'm_list', tr: 't_list', pni: 'p_list' };
-  const containerEl = document.getElementById(idMap[sectionShort]);
-  if(!containerEl) return;
+  const idMap = {
+    vj:'vj_list',
+    ac:'ac_list',
+    du:'du_list',
+    memo:'m_list',
+    tr:'t_list',
+    pni:'p_list'
+  };
 
-  containerEl.innerHTML = '';
+  const container = document.getElementById(idMap[sectionShort]);
+  if(!container) return;
+  container.innerHTML = "";
 
   list.forEach(ep => {
     const row = document.createElement('div');
-    row.className = 'row-entry';
-    const left = document.createElement('div'); left.className = 'left';
+    row.className = "row-entry";
 
+    const left = document.createElement('div');
+    left.className = "left";
+
+    /* --- Render per section --- */
     if(sectionShort === 'vj'){
-      left.innerHTML = `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
-        <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
-        <div class="small-note">Date: ${fmtDate(ep.date)} ${ep.flight? ' · ' + escapeHtml(ep.flight):''}${ep.synced? ' · (synced)':''}</div>`;
-    } else if(sectionShort === 'ac'){
-      left.innerHTML = `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
-        <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
-        <div class="small-note">Arrival: ${fmtDate(ep.date)} ${ep.flight? ' · ' + escapeHtml(ep.flight):''}${ep.synced? ' · (synced)':''}</div>`;
-    } else if(sectionShort === 'du' || sectionShort === 'memo'){
-      const title = escapeHtml(ep.title || '');
-      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-note">${escapeHtml(ep.details)}</div><div class="small-note">${fmtDate(ep.date)}${ep.synced? ' · (synced)':''}</div>`;
-    } else if(sectionShort === 'tr' || sectionShort === 'pni'){
-      const title = escapeHtml(ep.subject || '');
-      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-note">${escapeHtml(ep.details)}</div><div class="small-note">${fmtDate(ep.date)}${ep.synced? ' · (synced)':''}</div>`;
+      left.innerHTML =
+        `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
+         <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
+         <div class="small-note">Date: ${fmtDate(ep.date)} ${ep.flight ? "· "+escapeHtml(ep.flight):""} ${ep.synced?"· (synced)":""}</div>`;
     }
 
-    const right = document.createElement('div'); right.className = 'right';
+    if(sectionShort === 'ac'){
+      left.innerHTML =
+        `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
+         <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
+         <div class="small-note">${fmtDate(ep.date)} ${ep.flight ? "· "+escapeHtml(ep.flight):""} ${ep.synced?"· (synced)":""}</div>`;
+    }
+
+    if(sectionShort === 'du' || sectionShort === 'memo'){
+      left.innerHTML =
+        `<div style="font-weight:700">${escapeHtml(ep.title)}</div>
+         <div class="small-note">${escapeHtml(ep.details)}</div>
+         <div class="small-note">${fmtDate(ep.date)} ${ep.synced?"· (synced)":""}</div>`;
+    }
+
+    if(sectionShort === 'tr' || sectionShort === 'pni'){
+      left.innerHTML =
+        `<div style="font-weight:700">${escapeHtml(ep.subject)}</div>
+         <div class="small-note">${escapeHtml(ep.details)}</div>
+         <div class="small-note">${fmtDate(ep.date)} ${ep.synced?"· (synced)":""}</div>`;
+    }
+
+    const right = document.createElement('div');
+    right.className = "right";
+
+    /* Edit button */
     const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary';
-    editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-    editBtn.onclick = ()=> startEdit(sectionShort, ep.id);
+    editBtn.className = "btn btn-sm btn-outline-primary";
+    editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+    editBtn.onclick = () => startEdit(sectionShort, ep.uid);
+
+    /* Delete button */
     const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm btn-outline-danger';
-    delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-    delBtn.onclick = ()=> deleteEntry(sectionShort, ep.id);
+    delBtn.className = "btn btn-sm btn-outline-danger";
+    delBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+    delBtn.onclick = () => deleteEntry(sectionShort, ep.uid);
 
     right.appendChild(editBtn);
     right.appendChild(delBtn);
 
     row.appendChild(left);
     row.appendChild(right);
-    containerEl.appendChild(row);
+
+    container.appendChild(row);
   });
 
-  updateSmallPreview(sectionShort);
   updateCounts();
 }
 
-/* small dashboard preview: last 3 */
+/* ============================================
+  SMALL PREVIEW (last 3)
+============================================ */
 function updateSmallPreview(sectionShort){
-  const key = SECTIONS[sectionShort].key;
-  const list = loadLocal(key);
-  const previewIdMap = { vj:'vesselPreviewSmall', ac:'arrivalsPreviewSmall', du:'updatesPreviewSmall', memo:'memoPreviewSmall', tr:'trainingPreviewSmall', pni:'pniPreviewSmall' };
-  const previewEl = document.getElementById(previewIdMap[sectionShort]);
-  if(!previewEl) return;
-  const last3 = list.slice(-3).reverse();
-  previewEl.innerHTML = last3.map(item=>{
-    if(sectionShort==='vj') return `<div><strong>${escapeHtml(item.vessel)}</strong> — ${escapeHtml(item.port)} · ${escapeHtml(item.noCrew)} crew · ${escapeHtml(item.rank)}${item.synced? ' · (synced)':''}</div>`;
-    if(sectionShort==='ac') return `<div><strong>${escapeHtml(item.vessel)}</strong> — ${escapeHtml(item.port)} · ${escapeHtml(item.noCrew)} crew · ${escapeHtml(item.rank)}${item.synced? ' · (synced)':''}</div>`;
-    if(sectionShort==='du') return `<div><strong>${escapeHtml(item.title)}</strong> — ${fmtDate(item.date)}<div class="small-note">${escapeHtml(item.details)}</div></div>`;
-    if(sectionShort==='memo') return `<div><strong>${escapeHtml(item.title)}</strong> — ${fmtDate(item.date)}</div>`;
-    if(sectionShort==='tr') return `<div><strong>${escapeHtml(item.subject)}</strong> — ${fmtDate(item.date)}</div>`;
-    if(sectionShort==='pni') return `<div><strong>${escapeHtml(item.subject)}</strong> — ${fmtDate(item.date)}</div>`;
-    return '';
-  }).join('');
+  // optional — can leave blank if not used
 }
 
-/* update counts */
+/* ============================================
+   COUNT INDICATORS
+============================================ */
 function updateCounts(){
-  document.getElementById('countVessel').innerText = loadLocal(SECTIONS.vj.key).length;
-  document.getElementById('countArrivals').innerText = loadLocal(SECTIONS.ac.key).length;
-  document.getElementById('countUpdates').innerText = loadLocal(SECTIONS.du.key).length;
-  document.getElementById('countMemo').innerText = loadLocal(SECTIONS.memo.key).length;
-  document.getElementById('countTraining').innerText = loadLocal(SECTIONS.tr.key).length;
-  document.getElementById('countPNI').innerText = loadLocal(SECTIONS.pni.key).length;
+  document.getElementById('countVessel').innerText   = loadLocal("vesselJoin").length;
+  document.getElementById('countArrivals').innerText = loadLocal("arrivingCrew").length;
+  document.getElementById('countUpdates').innerText  = loadLocal("dailyUpdates").length;
+  document.getElementById('countMemo').innerText     = loadLocal("memo").length;
+  document.getElementById('countTraining').innerText = loadLocal("training").length;
+  document.getElementById('countPNI').innerText      = loadLocal("pni").length;
 }
 
-/* clear section local only */
-function clearSection(sectionId){
-  if(!confirm('Clear ALL entries for this section (local only)?')) return;
-  const short = mapSectionIdToShort(sectionId);
-  if(!short) return;
-  localStorage.removeItem(SECTIONS[short].key);
-  renderList(short);
-}
-
-/* clear all local storage */
-function clearAllLocal(){
-  if(!confirm('Clear ALL local data? This will NOT delete your Google Sheet data.')) return;
-  Object.keys(SECTIONS).forEach(k => localStorage.removeItem(SECTIONS[k].key));
-  Object.keys(SECTIONS).forEach(k => renderList(k));
-  updateCounts();
-}
-
-/* map id to short code */
-function mapSectionIdToShort(sectionId){
-  if(sectionId==='vesselJoin') return 'vj';
-  if(sectionId==='arrivingCrew') return 'ac';
-  if(sectionId==='dailyUpdates') return 'du';
-  if(sectionId==='memo') return 'memo';
-  if(sectionId==='training') return 'tr';
-  if(sectionId==='pni') return 'pni';
-  return null;
-}
-
-/* delete entry locally AND on server if UID exists */
-function deleteEntry(sectionShort, id){
-  const meta = SECTIONS[sectionShort];
-  const key = meta.key;
+/* ============================================
+  DELETE ENTRY
+============================================ */
+function deleteEntry(sectionShort, uid){
+  const key = SECTIONS[sectionShort].key;
   let list = loadLocal(key);
-  const idx = list.findIndex(x => x.id === id);
-  if (idx === -1) return;
+  const idx = list.findIndex(x => x.uid === uid);
+  if(idx === -1) return;
 
-  if (!confirm('Delete this entry?')) return;
+  if(!confirm("Delete this entry?")) return;
 
-  // ✅ get uid before removal
-  const uid = list[idx].uid || list[idx].UID || null;
-
-  // ✅ remove locally
-  list.splice(idx, 1);
+  list.splice(idx,1);
   saveLocal(key, list);
   renderList(sectionShort);
 
-  // ✅ notify server only if UID exists
-  if (uid) {
-    jsonpRequest({
-      action: 'delete',
-      sheet: meta.sheet,       // example: Vessel_Join, Arrivals, etc.
-      uid: uid                 // unique ID used on server
-    }, 9000)
-    .then(res => {
-      console.log('✅ server delete OK:', res);
-
-      // refresh local copy with server truth
-      syncFromSheet().catch(()=>{});
-    })
-    .catch(err => {
-      console.warn('⚠ server delete failed; will retry next sync', err);
-    });
-  }
+  // OPTIONAL: call delete_uid backend
 }
 
-
-/* start edit (local) */
-function startEdit(sectionShort, id){
+/* ============================================
+  START EDIT
+============================================ */
+function startEdit(sectionShort, uid){
   const key = SECTIONS[sectionShort].key;
-  const list = loadLocal(key);
-  const item = list.find(x=>x.id === id);
+  let list = loadLocal(key);
+  const item = list.find(x => x.uid === uid);
   if(!item) return;
-  editState[sectionShort] = { id: item.id };
 
-  if(sectionShort === 'vj'){
-    document.getElementById('vjVessel').value = item.vessel || '';
-    document.getElementById('vjPort').value = item.port || '';
-    document.getElementById('vjNo').value = item.noCrew || '';
-    document.getElementById('vjRank').value = item.rank || '';
-    document.getElementById('vjDate').value = item.date || '';
-    document.getElementById('vjFlight').value = item.flight || '';
-    window.scrollTo({top:0,behavior:'smooth'});
-  } else if(sectionShort === 'ac'){
-    document.getElementById('acVessel').value = item.vessel || '';
-    document.getElementById('acPort').value = item.port || '';
-    document.getElementById('acNo').value = item.noCrew || '';
-    document.getElementById('acRank').value = item.rank || '';
-    document.getElementById('acDate').value = item.date || '';
-    document.getElementById('acFlight').value = item.flight || '';
-    window.scrollTo({top:0,behavior:'smooth'});
-  } else if(sectionShort === 'du'){
-    document.getElementById('duTitle').value = item.title || '';
-    document.getElementById('duDetails').value = item.details || '';
-    document.getElementById('duDate').value = item.date || '';
-  } else if(sectionShort === 'memo'){
-    document.getElementById('mTitle').value = item.title || '';
-    document.getElementById('mDetails').value = item.details || '';
-    document.getElementById('mDate').value = item.date || '';
-  } else if(sectionShort === 'tr'){
-    document.getElementById('tSubject').value = item.subject || '';
-    document.getElementById('tDetails').value = item.details || '';
-    document.getElementById('tDate').value = item.date || '';
-  } else if(sectionShort === 'pni'){
-    document.getElementById('pSubject').value = item.subject || '';
-    document.getElementById('pDetails').value = item.details || '';
-    document.getElementById('pDate').value = item.date || '';
+  editState[sectionShort] = { uid: item.uid };
+
+  if(sectionShort==='vj'){
+    vjVessel.value = item.vessel;
+    vjPort.value   = item.port;
+    vjNo.value     = item.noCrew;
+    vjRank.value   = item.rank;
+    vjDate.value   = item.date;
+    vjFlight.value = item.flight;
   }
 
-  // change add button text to Update
-  const mapBtn = { vj:'vjAddBtn', ac:'acAddBtn', du:'duAddBtn', memo:'mAddBtn', tr:'tAddBtn', pni:'pAddBtn' };
-  const btn = document.getElementById(mapBtn[sectionShort]);
-  if(btn){ btn.innerText = 'Update'; btn.classList.remove('btn-success'); btn.classList.add('btn-warning'); }
+  if(sectionShort==='ac'){
+    acVessel.value = item.vessel;
+    acPort.value   = item.port;
+    acNo.value     = item.noCrew;
+    acRank.value   = item.rank;
+    acDate.value   = item.date;
+    acFlight.value = item.flight;
+  }
+
+  if(sectionShort==='du' || sectionShort==='memo'){
+    duTitle.value   = item.title;
+    duDetails.value = item.details;
+    duDate.value    = item.date;
+  }
+
+  if(sectionShort==='tr' || sectionShort==='pni'){
+    tSubject.value = item.subject;
+    tDetails.value = item.details;
+    tDate.value    = item.date;
+  }
+
+  // Change Add → Update
+  const mapBtn = {
+    vj: vjAddBtn, ac: acAddBtn, du: duAddBtn,
+    memo: mAddBtn, tr: tAddBtn, pni: pAddBtn
+  };
+
+  const btn = mapBtn[sectionShort];
+  btn.innerText = "Update";
+  btn.classList.remove("btn-success");
+  btn.classList.add("btn-warning");
+
+  scrollTo(0,0);
 }
 
-/* highlight Add button back to Add and clear edit state */
+/* ============================================
+  CLEAR FORM
+============================================ */
 function clearForm(sectionShort){
-  if(sectionShort==='vj'){ ['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='ac'){ ['acVessel','acPort','acNo','acRank','acDate','acFlight'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='du'){ ['duTitle','duDetails','duDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='memo'){ ['mTitle','mDetails','mDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='tr'){ ['tSubject','tDetails','tDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='pni'){ ['pSubject','pDetails','pDate'].forEach(id=>document.getElementById(id).value=''); }
+  if(sectionShort==='vj'){
+    ['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+  if(sectionShort==='ac'){
+    ['acVessel','acPort','acNo','acRank','acDate','acFlight']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+  if(sectionShort==='du'){
+    ['duTitle','duDetails','duDate']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+  if(sectionShort==='memo'){
+    ['mTitle','mDetails','mDate']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+  if(sectionShort==='tr'){
+    ['tSubject','tDetails','tDate']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+  if(sectionShort==='pni'){
+    ['pSubject','pDetails','pDate']
+      .forEach(id => document.getElementById(id).value = "");
+  }
+
+  // Reset button
   ['vjAddBtn','acAddBtn','duAddBtn','mAddBtn','tAddBtn','pAddBtn'].forEach(id=>{
-    const b=document.getElementById(id); if(b){ b.innerText='Add'; b.classList.remove('btn-warning'); b.classList.add('btn-success'); }
+    const b = document.getElementById(id);
+    b.innerText = "Add";
+    b.classList.remove("btn-warning");
+    b.classList.add("btn-success");
   });
-  // reset edit state for that section
-  if(sectionShort) editState[sectionShort]=null;
+
+  editState[sectionShort] = null;
+}
+/* ============================================================
+   PART 4 — ADD ENTRY / UPDATE ENTRY / SYNC ENGINE
+============================================================ */
+
+/* Generate UID */
+function generateUID(){
+  return "UID-" + Date.now() + "-" + Math.floor(Math.random()*999999);
 }
 
-/* wire up buttons */
-function wireUpButtons(){
-  document.getElementById('vjAddBtn').addEventListener('click', ()=> {
-    const short='vj';
-    if(editState.vj){
-      let list = loadLocal(SECTIONS.vj.key);
-      const idx = list.findIndex(x=>x.id === editState.vj.id);
-      if(idx>=0){
-        list[idx].vessel = document.getElementById('vjVessel').value.trim();
-        list[idx].port = document.getElementById('vjPort').value.trim();
-        list[idx].noCrew = document.getElementById('vjNo').value.trim();
-        list[idx].rank = document.getElementById('vjRank').value.trim();
-        list[idx].date = document.getElementById('vjDate').value;
-        list[idx].flight = document.getElementById('vjFlight').value.trim();
-        // mark as not-synced so retryLocalAppends will update server with new values
-        list[idx].synced = false;
-        saveLocal(SECTIONS.vj.key, list);
-        renderList('vj');
-        clearForm('vj');
-        editState.vj = null;
-      }
-    } else {
-      addEntry('vj');
-    }
-  });
-  document.getElementById('vjResetBtn').addEventListener('click', ()=> clearForm('vj'));
+/* Add new entry */
+function addEntry(sectionShort){
+  const meta = SECTIONS[sectionShort];
+  const key  = meta.key;
+  const sheet = meta.sheet;
 
-  document.getElementById('acAddBtn').addEventListener('click', ()=> {
-    if(editState.ac){
-      let list = loadLocal(SECTIONS.ac.key);
-      const idx = list.findIndex(x=>x.id === editState.ac.id);
-      if(idx>=0){
-        list[idx].vessel = document.getElementById('acVessel').value.trim();
-        list[idx].port = document.getElementById('acPort').value.trim();
-        list[idx].noCrew = document.getElementById('acNo').value.trim();
-        list[idx].rank = document.getElementById('acRank').value.trim();
-        list[idx].date = document.getElementById('acDate').value;
-        list[idx].flight = document.getElementById('acFlight').value.trim();
-        list[idx].synced = false;
-        saveLocal(SECTIONS.ac.key, list);
-        renderList('ac');
-        clearForm('ac'); editState.ac=null;
-      }
-    } else { addEntry('ac'); }
-  });
-  document.getElementById('acResetBtn').addEventListener('click', ()=> clearForm('ac'));
+  const ts = new Date().toISOString();
+  const uid = generateUID();
 
-  document.getElementById('duAddBtn').addEventListener('click', ()=> { addEntry('du'); });
-  document.getElementById('duResetBtn').addEventListener('click', ()=> clearForm('du'));
+  let obj = { timestamp: ts, uid: uid, synced: false };
 
-  document.getElementById('mAddBtn').addEventListener('click', ()=> { addEntry('memo'); });
-  document.getElementById('mResetBtn').addEventListener('click', ()=> clearForm('memo'));
-
-  document.getElementById('tAddBtn').addEventListener('click', ()=> { addEntry('tr'); });
-  document.getElementById('tResetBtn').addEventListener('click', ()=> clearForm('tr'));
-
-  document.getElementById('pAddBtn').addEventListener('click', ()=> { addEntry('pni'); });
-  document.getElementById('pResetBtn').addEventListener('click', ()=> clearForm('pni'));
-
-  // Chat send
-  document.getElementById('chatSendBtn').addEventListener('click', sendChat);
-}
-
-/* ---------- Chatboard ---------- */
-async function loadChat(){
-  const data = await callServerGet('ChatBoard');
-  if(!Array.isArray(data)) return;
-  // server rows expected to have headers including UID
-  const rows = data.map(r => {
-    return { name: r['Name'] || r['name'] || '', message: r['Message'] || r['message'] || '', date: r['Date'] || r['date'] || r['Timestamp'] || '', uid: r['UID'] || r['Uid'] || r['uid'] || '' };
-  }).reverse();
-  const el = document.getElementById('chatLog');
-  el.innerHTML = rows.map(row => `<div style="margin-bottom:8px"><strong>${escapeHtml(row.name)}</strong><div>${escapeHtml(row.message)}</div><small class="small-note">${fmtDate(row.date)}</small></div>`).join('');
-  el.scrollTop = el.scrollHeight;
-}
-
-/* send chat (append to ChatBoard sheet) */
-function sendChat(){
-  const name = document.getElementById('chatName').value.trim() || 'Anonymous';
-  const msg = document.getElementById('chatMsg').value.trim();
-  if(!msg) return alert('Please enter a message');
-
-  // local echo
-  const key = SECTIONS.chat.key;
-  const local = loadLocal(key);
-  const uid = makeUID();
-  local.push({ id: Date.now(), name, message: msg, date: new Date().toISOString(), uid, synced:false });
-  saveLocal(key, local);
-
-  // Build array for ChatBoard: ["Timestamp","Name","Message","Date","UID"]
-  const rowArr = buildRowForSheet('ChatBoard', { Timestamp:'', Name: name, Message: msg, Date: new Date().toISOString(), UID: uid });
-
-  callServerAppend('ChatBoard', rowArr).then(()=> {
-    // mark local chat as synced
-    const localAfter = loadLocal(key);
-    const idx = localAfter.findIndex(x=>x.uid === uid);
-    if(idx >= 0){ localAfter[idx].synced = true; saveLocal(key, localAfter); }
-    document.getElementById('chatMsg').value='';
-    loadChat().catch(()=>{});
-  }).catch(err=>{
-    console.warn('chat append failed', err);
-    document.getElementById('chatMsg').value='';
-    loadChat().catch(()=>{});
-  });
-}
-
-/* ---------- Sync from Google Sheet ---------- */
-async function syncFromSheet(){
-  const tabs = ['Vessel_Join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
-  const now = new Date();
-  const lastSyncEl = document.getElementById('lastSync');
-  if(lastSyncEl) lastSyncEl.innerText = now.toLocaleString();
-
-  for(const tab of tabs){
-    const data = await callServerGet(tab);
-    if(!Array.isArray(data)) continue;
-
-    let mapped = [];
-
-    if(tab === 'Vessel_Join'){
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        vessel: r['Vessel'] || '',
-        port: r['Port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || '',
-        rank: r['Rank'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        flight: r['Flight'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.vj.key, mapped);
-      renderList('vj');
-
-    } else if(tab === 'Arrivals'){
-      mapped = data.map(r => ({
-        id: r["UID"] || r["Uid"] || r["uid"] || r["Date"] || r["Timestamp"],
-        vessel: r['Vessel'] || '',
-        port: r['Port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || '',
-        rank: r['Rank'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        flight: r['Flight'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.ac.key, mapped);
-      renderList('ac');
-
-    } else if(tab === 'Updates'){
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        title: r['Title'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.du.key, mapped);
-      renderList('du');
-
-    } else if(tab === 'Memo'){
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        title: r['Title'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.memo.key, mapped);
-      renderList('memo');
-
-    } else if(tab === 'Training'){
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        subject: r['Subject'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.tr.key, mapped);
-      renderList('tr');
-
-    } else if(tab === 'Pni'){
-      mapped = data.map(r => ({
-        id: Date.now() + Math.floor(Math.random()*100000),
-        subject: r['Subject'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || '',
-        synced: true
-      }));
-      saveLocal(SECTIONS.pni.key, mapped);
-      renderList('pni');
-
-    } else if(tab === 'ChatBoard'){
-      const chatRows = data.map(r => ({
-        name: r['Name'] || '',
-        message: r['Message'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || r['Uid'] || r['uid'] || ''
-      }));
-      const el = document.getElementById('chatLog');
-      el.innerHTML = chatRows.reverse()
-        .map(row => `<div style="margin-bottom:8px"><strong>${escapeHtml(row.name)}</strong><div>${escapeHtml(row.message)}</div><small class="small-note">${fmtDate(row.date)}</small></div>`)
-        .join('');
-    }
+  if(sectionShort==='vj'){
+    obj.vessel = vjVessel.value.trim();
+    obj.port   = vjPort.value.trim();
+    obj.noCrew = vjNo.value.trim();
+    obj.rank   = vjRank.value.trim();
+    obj.date   = vjDate.value;
+    obj.flight = vjFlight.value.trim();
   }
-}
 
-/* manual sync button wrapper (and automatic retry of offline entries) */
-async function manualSync(){
-  try{
-    await syncFromSheet();
-    await retryLocalAppends();
-    alert('Sync complete.');
-  } catch(err){
-    console.error('manualSync error', err);
-    alert('Sync error (see console).');
+  if(sectionShort==='ac'){
+    obj.vessel = acVessel.value.trim();
+    obj.port   = acPort.value.trim();
+    obj.noCrew = acNo.value.trim();
+    obj.rank   = acRank.value.trim();
+    obj.date   = acDate.value;
+    obj.flight = acFlight.value.trim();
   }
+
+  if(sectionShort==='du' || sectionShort==='memo'){
+    obj.title   = duTitle.value.trim() || mTitle.value.trim();
+    obj.details = duDetails.value.trim() || mDetails.value.trim();
+    obj.date    = duDate.value || mDate.value;
+  }
+
+  if(sectionShort==='tr' || sectionShort==='pni'){
+    obj.subject = tSubject.value.trim() || pSubject.value.trim();
+    obj.details = tDetails.value.trim() || pDetails.value.trim();
+    obj.date    = tDate.value || pDate.value;
+  }
+
+  // Save local
+  let list = loadLocal(key);
+  list.push(obj);
+  saveLocal(key, list);
+
+  // Render
+  renderList(sectionShort);
+  clearForm(sectionShort);
+
+  // Try sync
+  sendToServer_Append(sectionShort, obj);
 }
 
-/* Attempt to resend local entries to server (for sections with local items) */
-async function retryLocalAppends(){
-  // For each section, attempt to append only local items that are not yet synced
-  const listToTry = ['vj','ac','du','memo','tr','pni','chat'];
-  for(const short of listToTry){
-    const meta = SECTIONS[short];
-    const arr = loadLocal(meta.key);
-    // arr may be authoritative list (from sheet) or local unsynced entries
-    for(let i=0; i < arr.length; i++){
-      const item = arr[i];
-      if(item && item.synced) continue; // already synced — skip
-      // if item lacks uid, generate one
-      if(!item.uid) item.uid = makeUID();
-      let payloadArr = [];
-      if(short==='vj' || short==='ac'){
-        const payloadObj = { 'Timestamp':'', 'Vessel': item.vessel || '', 'Port': item.port || '', 'No. of Crew': item.noCrew || '', 'Rank': item.rank || '', 'Date': item.date || '', 'Flight': item.flight || '', 'UID': item.uid };
-        payloadArr = buildRowForSheet(meta.sheet, payloadObj);
-      } else if(short==='du' || short==='memo'){
-        const payloadObj = { 'Timestamp':'', 'Title': item.title || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-        payloadArr = buildRowForSheet(meta.sheet, payloadObj);
-      } else if(short==='tr' || short==='pni'){
-        const payloadObj = { 'Timestamp':'', 'Subject': item.subject || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-        payloadArr = buildRowForSheet(meta.sheet, payloadObj);
-      } else if(short==='chat'){
-        const payloadObj = { 'Timestamp':'', 'Name': item.name || '', 'Message': item.message || '', 'Date': item.date || '', 'UID': item.uid };
-        payloadArr = buildRowForSheet(meta.sheet, payloadObj);
-      } else {
-        continue;
-      }
-      try {
-        await callServerAppend(meta.sheet, payloadArr);
-        // mark item synced in local storage
-        const localNow = loadLocal(meta.key);
-        const idxLocal = localNow.findIndex(x => x.uid === item.uid);
-        if(idxLocal >= 0){
-          localNow[idxLocal].synced = true;
-          saveLocal(meta.key, localNow);
+/* Update entry */
+function updateEntry(sectionShort, uid){
+  const key = SECTIONS[sectionShort].key;
+  let list = loadLocal(key);
+  const idx = list.findIndex(x => x.uid === uid);
+  if(idx === -1) return;
+
+  let item = list[idx];
+  item.synced = false; // force resync
+
+  if(sectionShort==='vj'){
+    item.vessel = vjVessel.value.trim();
+    item.port   = vjPort.value.trim();
+    item.noCrew = vjNo.value.trim();
+    item.rank   = vjRank.value.trim();
+    item.date   = vjDate.value;
+    item.flight = vjFlight.value.trim();
+  }
+
+  if(sectionShort==='ac'){
+    item.vessel = acVessel.value.trim();
+    item.port   = acPort.value.trim();
+    item.noCrew = acNo.value.trim();
+    item.rank   = acRank.value.trim();
+    item.date   = acDate.value;
+    item.flight = acFlight.value.trim();
+  }
+
+  if(sectionShort==='du' || sectionShort==='memo'){
+    item.title   = duTitle.value.trim() || mTitle.value.trim();
+    item.details = duDetails.value.trim() || mDetails.value.trim();
+    item.date    = duDate.value || mDate.value;
+  }
+
+  if(sectionShort==='tr' || sectionShort==='pni'){
+    item.subject = tSubject.value.trim() || pSubject.value.trim();
+    item.details = tDetails.value.trim() || pDetails.value.trim();
+    item.date    = tDate.value || pDate.value;
+  }
+
+  saveLocal(key, list);
+  renderList(sectionShort);
+  clearForm(sectionShort);
+
+  sendToServer_Update(sectionShort, item);
+}
+
+/* Send new entry to Google Sheet */
+function sendToServer_Append(sectionShort, obj){
+  const sheet = SECTIONS[sectionShort].sheet;
+
+  const row = buildRowForSheet(sectionShort, obj);
+  const url =
+    GAS_URL +
+    "?callback=callback" +
+    "&action=append" +
+    "&sheet=" + encodeURIComponent(sheet) +
+    "&row=" + encodeURIComponent(JSON.stringify(row));
+
+  jsonp(url)
+    .then(() => markSynced(sectionShort, obj.uid))
+    .catch(() => console.warn("Append failed, will retry later"));
+}
+
+/* Send UPDATE to Google Sheet */
+function sendToServer_Update(sectionShort, obj){
+  const sheet = SECTIONS[sectionShort].sheet;
+  const row = buildRowForSheet(sectionShort, obj);
+
+  const url =
+    GAS_URL +
+    "?callback=callback" +
+    "&action=update_uid" +
+    "&sheet=" + encodeURIComponent(sheet) +
+    "&uid=" + encodeURIComponent(obj.uid) +
+    "&row=" + encodeURIComponent(JSON.stringify(row));
+
+  jsonp(url)
+    .then(() => markSynced(sectionShort, obj.uid))
+    .catch(() => console.warn("Update failed, will retry later"));
+}
+
+/* Build row based on sheet structure */
+function buildRowForSheet(sectionShort, item){
+  if(sectionShort==='vj' || sectionShort==='ac'){
+    return [
+      item.timestamp,
+      item.vessel,
+      item.port,
+      item.noCrew,
+      item.rank,
+      item.date,
+      item.flight,
+      item.uid
+    ];
+  }
+
+  if(sectionShort==='du' || sectionShort==='memo'){
+    return [
+      item.timestamp,
+      item.title,
+      item.details,
+      item.date,
+      item.uid
+    ];
+  }
+
+  if(sectionShort==='tr' || sectionShort==='pni'){
+    return [
+      item.timestamp,
+      item.subject,
+      item.details,
+      item.date,
+      item.uid
+    ];
+  }
+
+  return [];
+}
+
+/* Mark entry as synced */
+function markSynced(sectionShort, uid){
+  const key = SECTIONS[sectionShort].key;
+  let list = loadLocal(key);
+  const idx = list.findIndex(x => x.uid === uid);
+  if(idx === -1) return;
+
+  list[idx].synced = true;
+  saveLocal(key, list);
+  renderList(sectionShort);
+}
+
+/* Retry unsynced every 10 seconds */
+setInterval(() => {
+  Object.keys(SECTIONS).forEach(short => {
+    const key = SECTIONS[short].key;
+    let list = loadLocal(key);
+
+    list
+      .filter(x => x.synced !== true)
+      .forEach(x => {
+        if(x.uid){
+          // try update OR append depending if exists in sheet
+          sendToServer_Update(short, x);
+        } else {
+          sendToServer_Append(short, x);
         }
-      } catch(e){
-        // ignore; will try next time
-      }
-    }
-  }
-  // refresh authoritative copy after retries
-  await syncFromSheet();
-}
-
-function printSectionPDF(sectionId, filename, all=false){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'landscape'});
-  let y = 14;
-
-  doc.setFontSize(14);
-  doc.text("SeaCrew Monthly Report", 14, y);
-  y += 10;
-
-  // ---------------------------------------------------
-  // ✅ MONTHLY REPORT – ALL SECTIONS
-  // ---------------------------------------------------
-  if(all){
-    generateSectionPDF(doc, "Vessel Crew Joining", loadLocal(SECTIONS.vj.key), ["Vessel","Port","No. Crew","Rank","Date","Flight"], (r)=>[
-      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
-    ]);
-
-    generateSectionPDF(doc, "Arriving Crew", loadLocal(SECTIONS.ac.key), ["Vessel","Port","No. Crew","Rank","Arrival","Flight"], (r)=>[
-      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
-    ]);
-
-    generateSectionPDF(doc, "Daily Updates", loadLocal(SECTIONS.du.key), ["Title","Details","Date"], (r)=>[
-      r.title, r.details, fmtDate(r.date)
-    ]);
-
-    generateSectionPDF(doc, "Memo", loadLocal(SECTIONS.memo.key), ["Title","Details","Date"], (r)=>[
-      r.title, r.details, fmtDate(r.date)
-    ]);
-
-    generateSectionPDF(doc, "Training", loadLocal(SECTIONS.tr.key), ["Subject","Details","Date"], (r)=>[
-      r.subject, r.details, fmtDate(r.date)
-    ]);
-
-    generateSectionPDF(doc, "P&I Events", loadLocal(SECTIONS.pni.key), ["Subject","Details","Date"], (r)=>[
-      r.subject, r.details, fmtDate(r.date)
-    ]);
-
-    // ---------------------------------------------------
-    // ✅ ADD SIGNATURE BLOCK FOR GM
-    // ---------------------------------------------------
-    doc.addPage("landscape");
-
-    doc.setFontSize(12);
-    doc.text("Prepared By:", 14, 30);
-    doc.setFontSize(14);
-    doc.text("__________________________________", 14, 50);
-    doc.text("General Manager", 14, 58);
-
-    doc.save(filename + ".pdf");
-    return;
-  }
-
-  // ---------------------------------------------------
-  // ✅ SINGLE-SECTION REPORT
-  // ---------------------------------------------------
-  const short = mapSectionIdToShort(sectionId);
-  if(!short){ alert("Unknown section"); return; }
-  const list = loadLocal(SECTIONS[short].key);
-
-  if(!list || list.length === 0){
-    alert("No entries to print.");
-    return;
-  }
-
-  doc.setFontSize(14);
-  doc.text(filename.replace(/_/g, " "), 14, 20);
-
-  let headers = [];
-  let rows = [];
-
-  if(short === 'vj'){
-    headers = ["Vessel","Port","No. Crew","Rank","Date","Flight"];
-    rows = list.map(r => [
-      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
-    ]);
-  }
-
-  if(short === 'ac'){
-    headers = ["Vessel","Port","No. Crew","Rank","Arrival","Flight"];
-    rows = list.map(r => [
-      r.vessel, r.port, r.noCrew, r.rank, fmtDate(r.date), r.flight || ""
-    ]);
-  }
-
-  if(short === 'du'){
-    headers = ["Title","Details","Date"];
-    rows = list.map(r => [
-      r.title, r.details, fmtDate(r.date)
-    ]);
-  }
-
-  if(short === 'memo'){
-    headers = ["Title","Details","Date"];
-    rows = list.map(r => [
-      r.title, r.details, fmtDate(r.date)
-    ]);
-  }
-
-  if(short === 'tr'){
-    headers = ["Subject","Details","Date"];
-    rows = list.map(r => [
-      r.subject, r.details, fmtDate(r.date)
-    ]);
-  }
-
-  if(short === 'pni'){
-    headers = ["Subject","Details","Date"];
-    rows = list.map(r => [
-      r.subject, r.details, fmtDate(r.date)
-    ]);
-  }
-
-  doc.autoTable({
-    head: [headers],
-    body: rows,
-    startY: 28,
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [240, 240, 240] }
+      });
   });
+}, 10000);
+/* ============================================================
+   PART 5 — BUTTON WIRING + INITIALIZATION
+============================================================ */
 
-  doc.save(filename + ".pdf");
-}
+const editState = {
+  vj:null, ac:null, du:null, memo:null, tr:null, pni:null
+};
 
-  function generateSectionPDF(doc, sectionTitle, list, headers, rowMapper){
-  if(!list || list.length === 0) return;
-
-  doc.addPage("landscape");
-
-  doc.setFontSize(12);
-  doc.text(sectionTitle, 14, 18);
-
-  const rows = list.map(rowMapper);
-
-  doc.autoTable({
-    head: [headers],
-    body: rows,
-    startY: 26,
-    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [230, 230, 230] }
+/* JSONP helper */
+function jsonp(url){
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Math.random().toString(36).substring(2);
+    window[cb] = (data) => {
+      delete window[cb];
+      document.body.removeChild(script);
+      if(data && data.success) resolve(data);
+      else reject(data);
+    };
+    const script = document.createElement("script");
+    script.src = url.replace("callback=callback", "callback="+cb);
+    script.onerror = reject;
+    document.body.appendChild(script);
   });
 }
 
-/* sticky note save */
-function saveSticky(){
-  const val = document.getElementById('stickyNote').value || '';
-  localStorage.setItem('stickyNote', val);
-  alert('Saved locally');
+/* Button wiring */
+function wireUpButtons(){
+
+  /* VESSEL JOIN */
+  vjAddBtn.addEventListener("click", ()=>{
+    if(editState.vj) updateEntry("vj", editState.vj.uid);
+    else addEntry("vj");
+  });
+  vjResetBtn.addEventListener("click", ()=> clearForm("vj"));
+
+  /* ARRIVALS */
+  acAddBtn.addEventListener("click", ()=>{
+    if(editState.ac) updateEntry("ac", editState.ac.uid);
+    else addEntry("ac");
+  });
+  acResetBtn.addEventListener("click", ()=> clearForm("ac"));
+
+  /* UPDATES */
+  duAddBtn.addEventListener("click", ()=>{
+    if(editState.du) updateEntry("du", editState.du.uid);
+    else addEntry("du");
+  });
+  duResetBtn.addEventListener("click", ()=> clearForm("du"));
+
+  /* MEMO */
+  mAddBtn.addEventListener("click", ()=>{
+    if(editState.memo) updateEntry("memo", editState.memo.uid);
+    else addEntry("memo");
+  });
+  mResetBtn.addEventListener("click", ()=> clearForm("memo"));
+
+  /* TRAINING */
+  tAddBtn.addEventListener("click", ()=>{
+    if(editState.tr) updateEntry("tr", editState.tr.uid);
+    else addEntry("tr");
+  });
+  tResetBtn.addEventListener("click", ()=> clearForm("tr"));
+
+  /* PNI */
+  pAddBtn.addEventListener("click", ()=>{
+    if(editState.pni) updateEntry("pni", editState.pni.uid);
+    else addEntry("pni");
+  });
+  pResetBtn.addEventListener("click", ()=> clearForm("pni"));
 }
 
-/* ---------- Init ---------- */
-function init(){
+/* On load */
+document.addEventListener("DOMContentLoaded", ()=>{
   wireUpButtons();
-  // populate sticky note
-  const saved = localStorage.getItem('stickyNote'); if(saved) document.getElementById('stickyNote').value = saved;
-  // render any existing local data
-  Object.keys(SECTIONS).forEach(k=>{
-    if(k==='chat') return;
-    renderList(k);
-  });
-  // load chat from server
-  loadChat().catch(()=>{});
-  // initial sync from server (overwrite local)
-  syncFromSheet().catch(()=>{});
-  // auto-sync every 15s (safe - will only attempt unsynced items)
-  setInterval(()=>{ syncFromSheet().catch(()=>{}); retryLocalAppends().catch(()=>{}); }, 15000);
-}
 
-window.addEventListener('DOMContentLoaded', init);
-</script>
+  renderList("vj");
+  renderList("ac");
+  renderList("du");
+  renderList("memo");
+  renderList("tr");
+  renderList("pni");
+
+  updateCounts();
+});
