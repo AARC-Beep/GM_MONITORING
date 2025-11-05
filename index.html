@@ -1219,55 +1219,6 @@ async function doLogin(){
   document.getElementById('mainContent').style.display='block';
   await startAppAfterLogin();
 }
-<script>
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzkykBFEZTIWUZcsCM2Lb0_bUaqGKAQWzxK-2f4IrpP6ekN9iuh6gpGrCSeNU6uvYhc/exec";
-
-document.getElementById("btnLogin").addEventListener("click", doLogin);
-
-function doLogin() {
-  let user = document.getElementById("loginUser").value.trim();
-  let pass = document.getElementById("loginPass").value.trim();
-
-  if (!user || !pass) {
-    alert("Please enter username and password.");
-    return;
-  }
-
-  let url = WEBAPP_URL +
-    "?action=login&username=" +
-    encodeURIComponent(user) +
-    "&password=" +
-    encodeURIComponent(pass) +
-    "&callback=loginCB";
-
-  let script = document.createElement("script");
-  script.src = url;
-  document.body.appendChild(script);
-}
-
-function loginCB(response) {
-  if (!response.success) {
-    alert("Invalid Credential!");
-    return;
-  }
-
-  localStorage.setItem("scd_user", response.username);
-  localStorage.setItem("scd_role", response.role);
-
-  showDashboard();
-}
-
-document.getElementById("btnGuest").addEventListener("click", function () {
-  localStorage.setItem("scd_user", "Guest");
-  localStorage.setItem("scd_role", "guest");
-  showDashboard();
-});
-
-function showDashboard() {
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("dashboardScreen").style.display = "block";
-}
-</script>
 
 /* ---------- Final DOM ready ---------- */
 window.addEventListener('DOMContentLoaded', init);
