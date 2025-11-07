@@ -378,256 +378,249 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// ✅ YOUR WEB APP URL (replace with your deployed URL)
-const SERVER_URL = "YOUR_WEB_APP_URL_HERE";
+/* ================================================================
+   PART 3 — FINAL JAVASCRIPT (LOGIN + CRUD + SYNC + CHATBOARD)
+   Fully compatible with updated Apps Script backend (Nov 2025)
+================================================================ */
 
-// ✅ Section mapping used by ALL functions
-const SECTIONS = {
-  vesselJoin:   { sheet: "Vessel_Join",   listId:"vj_list", previewId:"vesselPreviewSmall",  countId:"countVessel",    storage:"vjData" },
-  arrivingCrew: { sheet: "Arrivals",      listId:"ac_list", previewId:"arrivalsPreviewSmall", countId:"countArrivals",  storage:"acData" },
-  dailyUpdates: { sheet: "Updates",       listId:"du_list", previewId:"updatesPreviewSmall",  countId:"countUpdates",   storage:"duData" },
-  memo:         { sheet: "Memo",          listId:"m_list",  previewId:"memoPreviewSmall",     countId:"countMemo",      storage:"mData"  },
-  training:     { sheet: "Training",      listId:"t_list",  previewId:"trainingPreviewSmall", countId:"countTraining",  storage:"tData"  },
-  pni:          { sheet: "Pni",           listId:"p_list",  previewId:"pniPreviewSmall",      countId:"countPNI",       storage:"pData"  },
-  chat:         { sheet: "ChatBoard",     listId:"chatLog", previewId:null,                    countId:null,             storage:"chatData" }
+/* ================================================================
+   A. GLOBAL VARIABLES
+================================================================ */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwhdSxp2SD3rsLMGkj7XbADruQffto46bPLkfM3lkgOI90-5qHGIFAbyTLfvXXgdgck/exec";   // ← replace with your Script URL
+let CURRENT_USER = null;
+let DB = {
+  Vessel_Join: [],
+  Arrivals: [],
+  Updates: [],
+  Memo: [],
+  Training: [],
+  Pni: [],
+  ChatBoard: []
 };
 
-// ✅ Navigation logic
-function navTo(event, target) {
-  event.preventDefault();
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
-  event.target.classList.add("active");
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-  document.getElementById(target).style.display = "block";
-}
-function navToElement(id) { navTo({preventDefault:()=>{}, target:document.querySelector(`[data-target="${id}"]`)}, id); }
+/* Utility: fetch wrapper */
+async function api(action, params = {}) {
+  const query = new URLSearchParams({ action, ...params }).toString();
+  const url = `${WEB_APP_URL}?${query}&callback=cb`;
 
-// ✅ JSONP request wrapper
-function jsonpRequest(params) {
-  return new Promise(resolve => {
-    const cbName = "cb_" + Math.random().toString(36).substring(2);
-    window[cbName] = data => { resolve(data); delete window[cbName]; };
-
-    const q = Object.entries(params)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join("&");
-
+  return new Promise((resolve) => {
+    window.cb = (resp) => resolve(resp);
     const s = document.createElement("script");
-    s.src = `${SERVER_URL}?callback=${cbName}&${q}`;
+    s.src = url;
     document.body.appendChild(s);
-    setTimeout(() => s.remove(), 5000);
   });
 }
 
-// ✅ SERVER CALLS — FIXED ✅
-async function callServerAppend(sheet, payload) {
-  return await jsonpRequest({
-    action: "append_uid",
-    sheet: sheet,
-    payload: JSON.stringify(payload)
-  });
+/* Generate UID */
+function makeUID() {
+  return "UID-" + Date.now() + "-" + Math.floor(Math.random() * 99999);
 }
 
-async function callServerUpdate(sheet, payload) {
-  return await jsonpRequest({
-    action: "update_uid",
-    sheet: sheet,
-    payload: JSON.stringify(payload)
-  });
+/* ================================================================
+   B. LOGIN SYSTEM (FIXED)
+================================================================ */
+async function callServerAuth(username, password) {
+  return await api("auth", { username, password });
 }
 
-async function callServerDelete(sheet, uid) {
-  return await jsonpRequest({
-    action: "delete_uid",
-    sheet: sheet,
-    uid: uid
-  });
-}
+function setupLogin() {
+  document.getElementById("loginBtn").addEventListener("click", async () => {
+    const u = document.getElementById("loginUsername").value.trim();
+    const p = document.getElementById("loginPassword").value.trim();
 
-async function callServerFetchAll() {
-  return await jsonpRequest({
-    action: "fetchall"
-  });
-}
-async function callServerAuth(username, password){
-  try {
-    const url = GS_URL + "?action=login"
-      + "&username=" + encodeURIComponent(username)
-      + "&password=" + encodeURIComponent(password)
-      + "&callback=?";
-    
-    const resp = await fetchJSONP(url);
-    return resp;
-  } catch(err){
-    return { success:false, message:"Login error: "+err };
-  }
-}
-
-/* ============================================================
-   ✅ UNIVERSAL RENDER FUNCTION FOR ALL SECTIONS
-   ============================================================*/
-
-function renderSection(sectionKey, items) {
-  const config = SECTIONS[sectionKey];
-  const container = document.getElementById(config.listId);
-  container.innerHTML = "";
-
-  if (!items || items.length === 0) {
-    container.innerHTML = `<div class="small-note text-center">No entries yet.</div>`;
-    return;
-  }
-
-  items.forEach(entry => {
-    const card = document.createElement("div");
-    card.className = "entry-card";
-
-    let html = "<div class='entry-meta'>";
-    for (const key in entry) {
-      if (key !== "UID") {
-        html += `<div><strong>${key}:</strong> ${entry[key]}</div>`;
-      }
+    if (!u || !p) {
+      alert("Enter username and password");
+      return;
     }
-    html += "</div>";
 
-    card.innerHTML = html;
+    const resp = await callServerAuth(u, p);
 
-    // ✅ ACTION BUTTONS
-    const actions = document.createElement("div");
-    actions.className = "entry-actions";
+    if (resp && resp.success) {
+      CURRENT_USER = {
+        username: resp.username,
+        role: resp.role
+      };
 
-    // ✅ Delete button
-    const del = document.createElement("button");
-    del.className = "btn btn-danger btn-sm";
-    del.innerHTML = "<i class='fa-solid fa-trash'></i>";
-    del.onclick = () => deleteEntry(sectionKey, entry.UID);
-    actions.appendChild(del);
+      document.getElementById("loginScreen").style.display = "none";
 
-    card.appendChild(actions);
-    container.appendChild(card);
+      await syncFromSheet();
+      renderAll();
+
+    } else {
+      alert(resp.message || "Invalid credentials");
+    }
   });
 
-  // ✅ update counter
-  if (config.countId) {
-    document.getElementById(config.countId).innerText = items.length;
-  }
+  document.getElementById("loginResetBtn").addEventListener("click", () => {
+    document.getElementById("loginUsername").value = "";
+    document.getElementById("loginPassword").value = "";
+  });
 }
 
-/* ============================================================
-   ✅ DELETE ENTRY — FIXED SO IT ARCHIVES PROPERLY
-   ============================================================*/
-async function deleteEntry(sectionKey, uid) {
-  if (!confirm("Delete this entry?\nIt will move to Archive sheet.")) return;
+/* ================================================================
+   C. SERVER COMMUNICATION
+================================================================ */
 
-  const config = SECTIONS[sectionKey];
-
-  const res = await callServerDelete(config.sheet, uid);
-
-  if (!res.ok) {
-    alert("Error deleting: " + res.msg);
-    return;
+/* Fetch full dataset */
+async function syncFromSheet() {
+  const resp = await api("fetchall", { sheets: "Vessel_Join,Arrivals,Updates,Memo,Training,Pni,ChatBoard" });
+  if (resp.ok) {
+    DB = resp.data;
   }
-
-  // ✅ Remove locally
-  let stored = JSON.parse(localStorage.getItem(config.storage) || "[]");
-  stored = stored.filter(i => i.UID !== uid);
-  localStorage.setItem(config.storage, JSON.stringify(stored));
-
-  // ✅ Re-render
-  renderSection(sectionKey, stored);
-
-  // ✅ Re-sync from server
-  await syncFromServer();
+  document.getElementById("lastSync").innerText = new Date().toLocaleTimeString();
 }
 
-/* ============================================================
-   ✅ UNIVERSAL ADD FUNCTION FOR ALL SECTIONS
-   ============================================================*/
-async function addEntry(sectionKey, fields) {
-  const config = SECTIONS[sectionKey];
-
-  // ✅ generate UID
-  const UID = "UID-" + Date.now();
-
-  const payload = { UID };
-
-  // ✅ map form fields to payload
-  for (const f in fields) payload[f] = fields[f].value.trim();
-
-  // ✅ append to server
-  const res = await callServerAppend(config.sheet, payload);
-  if (!res.ok) {
-    alert("Error adding: " + res.msg);
-    return;
-  }
-
-  // ✅ save local
-  let stored = JSON.parse(localStorage.getItem(config.storage) || "[]");
-  stored.push(payload);
-  localStorage.setItem(config.storage, JSON.stringify(stored));
-
-  // ✅ render
-  renderSection(sectionKey, stored);
-
-  // ✅ reset form fields
-  for (const f in fields) fields[f].value = "";
+/* Append row */
+async function appendRow(sheet, payload) {
+  payload.UID = makeUID();
+  return await api("append_uid", {
+    sheet,
+    payload: JSON.stringify(payload)
+  });
 }
 
-/* ============================================================
-   ✅ CHATBOARD — FULLY FIXED ✅ NO MORE GHOST ROWS
-   ============================================================*/
-document.getElementById("chatSendBtn").onclick = async () => {
+/* Update row */
+async function updateRow(sheet, payload) {
+  return await api("update_uid", {
+    sheet,
+    payload: JSON.stringify(payload)
+  });
+}
+
+/* Delete row → moves to Archive_<sheet> */
+async function deleteRow(sheet, uid) {
+  return await api("delete_uid", { sheet, uid });
+}
+
+/* ================================================================
+   D. RENDERING + CRUD + CHATBOARD + BUTTONS
+================================================================ */
+
+function renderAll() {
+  renderPreview("Vessel_Join", "vesselPreviewSmall", "countVessel");
+  renderPreview("Arrivals", "arrivalsPreviewSmall", "countArrivals");
+  renderPreview("Updates", "updatesPreviewSmall", "countUpdates");
+  renderPreview("Memo", "memoPreviewSmall", "countMemo");
+  renderPreview("Training", "trainingPreviewSmall", "countTraining");
+  renderPreview("Pni", "pniPreviewSmall", "countPNI");
+
+  renderSectionList("Vessel_Join", "vj_list");
+  renderSectionList("Arrivals", "ac_list");
+  renderSectionList("Updates", "du_list");
+  renderSectionList("Memo", "m_list");
+  renderSectionList("Training", "t_list");
+  renderSectionList("Pni", "p_list");
+
+  renderChatBoard();
+}
+
+/* Preview renderer */
+function renderPreview(sheetName, divID, countID) {
+  const div = document.getElementById(divID);
+  const data = DB[sheetName] || [];
+
+  document.getElementById(countID).innerText = data.length;
+
+  let html = "<table class='table table-sm'><tbody>";
+  data.slice(-5).forEach(r => {
+    html += `<tr><td>${Object.values(r)[0] || ""}</td><td>${r.Date || ""}</td></tr>`;
+  });
+  html += "</tbody></table>";
+
+  div.innerHTML = html;
+}
+
+/* Section List Rendering */
+function renderSectionList(sheet, containerID) {
+  const box = document.getElementById(containerID);
+  const list = DB[sheet] || [];
+
+  box.innerHTML = list.map(entry => `
+    <div class="row-entry">
+      <div class="left">${Object.values(entry).join(" — ")}</div>
+      <div class="right">
+        <button class="btn btn-sm btn-danger" onclick="handleDelete('${sheet}','${entry.UID}')">Delete</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* ChatBoard rendering */
+function renderChatBoard() {
+  const log = document.getElementById("chatLog");
+  const msgs = DB.ChatBoard || [];
+
+  log.innerHTML = msgs.map(m => `
+    <div><strong>${m.Name}:</strong> ${m.Message} <small>(${m.Timestamp})</small></div>
+  `).join("");
+}
+
+/* ChatBoard send */
+async function sendChatMessage() {
   const name = document.getElementById("chatName").value.trim();
-  const msg  = document.getElementById("chatMsg").value.trim();
+  const msg = document.getElementById("chatMsg").value.trim();
 
   if (!name || !msg) return;
 
-  const UID = "UID-" + Date.now();
-
   const payload = {
-    UID,
     Name: name,
     Message: msg,
-    Timestamp: new Date().toLocaleString()
+    Timestamp: new Date().toLocaleString(),
+    UID: makeUID()
   };
 
-  // ✅ send to server
-  const res = await callServerAppend("ChatBoard", payload);
-
-  if (!res.ok) {
-    alert("Chat send failed: " + res.msg);
-    return;
-  }
+  await appendRow("ChatBoard", payload);
+  await syncFromSheet();
+  renderChatBoard();
 
   document.getElementById("chatMsg").value = "";
-
-  await syncFromServer();
-};
-
-/* ============================================================
-   ✅ RENDER CHATBOARD (clean)
-   ============================================================*/
-function renderChat(list) {
-  const log = document.getElementById("chatLog");
-  log.innerHTML = "";
-
-  if (!list.length) {
-    log.innerHTML = `<div class='small-note'>No messages yet.</div>`;
-    return;
-  }
-
-  list
-    .sort((a,b)=> new Date(a.Timestamp) - new Date(b.Timestamp))
-    .forEach(c => {
-      const div = document.createElement("div");
-      div.className = "p-2 mb-1";
-      div.style.background = "#eef6ff";
-      div.style.borderRadius = "6px";
-      div.innerHTML = `<strong>${c.Name}</strong>: ${c.Message}<br><small>${c.Timestamp}</small>`;
-      log.appendChild(div);
-    });
-
-  log.scrollTop = log.scrollHeight;
 }
+
+/* Delete handler */
+async function handleDelete(sheet, uid) {
+  if (!confirm("Move to archive?")) return;
+
+  const resp = await deleteRow(sheet, uid);
+  if (resp.ok) {
+    await syncFromSheet();
+    renderAll();
+  } else {
+    alert("Delete failed: " + resp.msg);
+  }
+}
+
+/* Navigation */
+function navTo(e, target) {
+  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.getElementById(target).style.display = "block";
+
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
+  e.target.classList.add("active");
+}
+
+function navToElement(id) {
+  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.getElementById(id).style.display = "block";
+}
+
+/* Sync button */
+async function manualSync() {
+  await syncFromSheet();
+  renderAll();
+}
+
+/* Sticky note */
+function saveSticky() {
+  localStorage.setItem("stickyNote", document.getElementById("stickyNote").value);
+}
+
+/* Initialize */
+function init() {
+  setupLogin();
+  document.getElementById("chatSendBtn").onclick = sendChatMessage;
+}
+
+document.addEventListener("DOMContentLoaded", init);
 
 <!-- PART 4/4: SERVER HELPERS + SYNC (PASTE AFTER PART 3) -->
 <script>
