@@ -449,6 +449,19 @@ async function callServerFetchAll() {
     action: "fetchall"
   });
 }
+async function callServerAuth(username, password){
+  try {
+    const url = GS_URL + "?action=login"
+      + "&username=" + encodeURIComponent(username)
+      + "&password=" + encodeURIComponent(password)
+      + "&callback=?";
+    
+    const resp = await fetchJSONP(url);
+    return resp;
+  } catch(err){
+    return { success:false, message:"Login error: "+err };
+  }
+}
 
 /* ============================================================
    ✅ UNIVERSAL RENDER FUNCTION FOR ALL SECTIONS
