@@ -381,455 +381,158 @@
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Paste this after your Bootstrap script (or in a separate .js file) -->
 <script>
-/* ============================================================
-   SeaCrew Dashboard — Full JS (wired to your Apps Script)
-   Deployed Apps Script JSONP URL included
-===============================================================*/
-
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
+const SHEET_MAP = {
+  vesselJoin: "Vessel_join",
+  arrivingCrew: "Arrivals",
+  dailyUpdates: "Updates",
+  memo: "Memo",
+  training: "Training",
+  pni: "Pni",
+  chatBoard: "ChatBoard",
+  users: "Users"
+};
+
 let currentUser = null;
-let autoSyncInterval = null;
 
-/* ---------------- JSONP HELPER ---------------- */
-function jsonpRequest(params, timeout = 10000) {
-  return new Promise((resolve, reject) => {
-    const callbackName = "cb_" + Math.random().toString(36).substr(2,9);
-    params = Object.assign({}, params, { callback: callbackName });
+// ================= LOGIN =================
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
 
-    const script = document.createElement("script");
-    const query = Object.keys(params)
-      .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
-      .join("&");
-    script.src = `${SCRIPT_URL}?${query}`;
+function hideLogin() {
+  document.getElementById('loginOverlay').style.display = 'none';
+}
 
-    let done = false;
-    const cleanup = () => {
-      if (window[callbackName]) delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      clearTimeout(timer);
-    };
+function login() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  const msg = document.getElementById('loginMsg');
 
-    window[callbackName] = (data) => {
-      if (done) return;
-      done = true;
-      cleanup();
-      resolve(data);
-    };
+  if (!username || !password) {
+    msg.innerText = "Enter username and password";
+    return;
+  }
 
-    script.onerror = () => {
-      if (done) return;
-      done = true;
-      cleanup();
-      reject(new Error("JSONP script load error"));
-    };
-
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      cleanup();
-      reject(new Error("JSONP timeout"));
-    }, timeout);
-
-    document.body.appendChild(script);
+  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
+  jsonp(url, function(res) {
+    if (res.status === "success") {
+      currentUser = res.username;
+      hideLogin();
+      document.getElementById('logoutBtn').style.display = "inline-block";
+      startAutoSync();
+      loadAllPreviews();
+    } else {
+      msg.innerText = res.message || "Login failed";
+    }
   });
 }
 
-/* ---------------- NAV (used by inline onclick in your HTML) ---------------- */
-function navTo(event, sectionId) {
-  if (event && event.preventDefault) event.preventDefault();
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-  const sec = document.getElementById(sectionId);
-  if (sec) sec.style.display = "block";
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('logoutBtn').addEventListener('click', logout);
 
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
-  // mark the sidebar link that has data-target == sectionId
-  const link = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
-  if (link) link.classList.add("active");
-}
-function navToElement(sectionId){
-  // helper for button "Open"
-  navTo(null, sectionId);
-}
-window.navTo = navTo;
-window.navToElement = navToElement;
-window.doLogin = doLogin;
-window.logout = logout;
-window.clearAllLocal = clearAllLocal;
-window.clearSection = clearSection;
-window.manualSync = manualSync;
-window.printSectionPDF = printSectionPDF;
-
-/* ---------------- LOGIN ---------------- */
-async function doLogin() {
-  const uEl = document.getElementById("loginUser");
-  const pEl = document.getElementById("loginPass");
-  const msgEl = document.getElementById("loginMsg");
-  const u = uEl ? uEl.value.trim() : "";
-  const p = pEl ? pEl.value.trim() : "";
-  msgEl.textContent = "";
-
-  if (!u || !p) { msgEl.textContent = "Enter username & password"; return; }
-
-  try {
-    const res = await jsonpRequest({ action: "auth", username: u, password: p });
-    if (res && res.success) {
-      currentUser = res;
-      document.getElementById("loginOverlay").style.display = "none";
-      const logoutBtn = document.getElementById("logoutBtn");
-      if (logoutBtn) logoutBtn.style.display = "inline-block";
-      setupDashboard();
-    } else {
-      msgEl.textContent = (res && (res.message || res.error)) || "Invalid credentials";
-    }
-  } catch (err) {
-    console.error("Login error", err);
-    msgEl.textContent = "Login error — check console";
-  }
-}
-
-/* ---------------- LOGOUT ---------------- */
-function logout(){
+function logout() {
   currentUser = null;
-  document.getElementById("loginOverlay").style.display = "flex";
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) logoutBtn.style.display = "none";
-  if (autoSyncInterval) clearInterval(autoSyncInterval);
+  document.getElementById('logoutBtn').style.display = "none";
+  showLogin();
 }
 
-/* ---------------- DASHBOARD PREVIEWS ---------------- */
-async function loadSectionPreview(sheetName, previewDivId, countSpanId){
-  try {
-    const res = await jsonpRequest({ action: "fetch", sheet: sheetName });
-    const previewDiv = document.getElementById(previewDivId);
-    const countSpan = document.getElementById(countSpanId);
-    if (previewDiv) previewDiv.innerHTML = "";
-    if (!res || !res.success || !res.data || !res.data.length) {
-      if (countSpan) countSpan.textContent = "0";
-      return;
-    }
-    // show latest 5 entries
-    const items = res.data.slice(-5);
-    items.forEach(row => {
-      const el = document.createElement("div");
-      // prefer readable format: join non-empty values
-      const vals = Object.values(row).filter(v => v !== undefined && v !== null && String(v).trim() !== "");
-      el.textContent = vals.join(" | ");
-      if (previewDiv) previewDiv.appendChild(el);
-    });
-    if (countSpan) countSpan.textContent = res.data.length;
-  } catch (err) {
-    console.error("Preview load error", sheetName, err);
-    const countSpan = document.getElementById(countSpanId);
-    if (countSpan) countSpan.textContent = "0";
-  }
-}
-
-async function loadDashboardData(){
-  await Promise.all([
-    loadSectionPreview("Vessel_Join","vesselPreviewSmall","countVessel"),
-    loadSectionPreview("Arrivals","arrivalsPreviewSmall","countArrivals"),
-    loadSectionPreview("Daily_Updates","updatesPreviewSmall","countUpdates"),
-    loadSectionPreview("Memo","memoPreviewSmall","countMemo"),
-    loadSectionPreview("Training","trainingPreviewSmall","countTraining"),
-    loadSectionPreview("PNI","pniPreviewSmall","countPNI")
-  ]);
-}
-
-/* ---------------- SECTION RENDER (list with edit/delete) ---------------- */
-async function renderSection(sheet, listDivId, formFields) {
-  try {
-    const res = await jsonpRequest({ action: "fetch", sheet });
-    const listDiv = document.getElementById(listDivId);
-    if (!listDiv) return;
-    listDiv.innerHTML = "";
-
-    if (!res || !res.success || !res.data || !res.data.length) {
-      const empty = document.createElement("div");
-      empty.className = "small-note";
-      empty.textContent = "No entries";
-      listDiv.appendChild(empty);
-      return;
-    }
-
-    res.data.forEach(row => {
-      const entry = document.createElement("div");
-      entry.className = "row-entry";
-
-      const left = document.createElement("div");
-      left.className = "left";
-      left.textContent = Object.values(row).join(" | ");
-
-      const right = document.createElement("div");
-      right.className = "right";
-
-      const editBtn = document.createElement("button");
-      editBtn.className = "btn btn-sm btn-outline-primary";
-      editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
-      editBtn.title = "Edit";
-      editBtn.addEventListener("click", () => {
-        // populate the form fields by index order
-        const vals = Object.values(row);
-        for (let i = 0; i < formFields.length; i++){
-          const id = formFields[i];
-          const el = document.getElementById(id);
-          if (el) el.value = vals[i+0] !== undefined ? vals[i+0] : ""; // assuming UID may be first column; forms usually exclude UID
-        }
-        // store editing context
-        window.currentEditUID = row.UID;
-        window.currentEditSheet = sheet;
-        // navigate to the section if not visible
-        navToElement(listDiv.closest(".section").id);
-        // focus first input
-        const first = document.getElementById(formFields[0]);
-        if (first) first.focus();
-      });
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "btn btn-sm btn-outline-danger";
-      delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      delBtn.title = "Delete";
-      delBtn.addEventListener("click", async () => {
-        if (!confirm("Delete this entry? (it will be archived)")) return;
-        try {
-          const dres = await jsonpRequest({ action: "delete_uid", sheet, uid: row.UID });
-          if (dres && dres.success) {
-            await renderSection(sheet, listDivId, formFields);
-            await loadDashboardData();
-          } else {
-            alert("Delete failed: " + (dres && (dres.error || dres.message) ? (dres.error || dres.message) : "unknown"));
-          }
-        } catch (err) {
-          console.error("delete error", err);
-          alert("Delete failed (check console)");
-        }
-      });
-
-      right.appendChild(editBtn);
-      right.appendChild(delBtn);
-
-      entry.appendChild(left);
-      entry.appendChild(right);
-      listDiv.appendChild(entry);
-    });
-
-  } catch (err) {
-    console.error("renderSection error", sheet, err);
-  }
-}
-
-/* ---------------- SECTION CRUD BUTTONS ---------------- */
-function setupSectionButtons(sheet, addBtnId, resetBtnId, formFields, listDivId) {
-  const addBtn = document.getElementById(addBtnId);
-  const resetBtn = document.getElementById(resetBtnId);
-
-  const resetForm = () => {
-    formFields.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
-    window.currentEditUID = null;
-    window.currentEditSheet = null;
+// ================= JSONP HELPER =================
+function jsonp(url, callback) {
+  const cbName = "cb" + Math.floor(Math.random()*100000);
+  window[cbName] = function(res) {
+    callback(res);
+    delete window[cbName];
+    script.remove();
   };
-
-  if (addBtn) {
-    addBtn.addEventListener("click", async () => {
-      // collect values in the same order as the formFields array
-      const values = formFields.map(id => {
-        const el = document.getElementById(id);
-        return el ? el.value : "";
-      });
-
-      try {
-        if (window.currentEditUID && window.currentEditSheet === sheet) {
-          // update
-          const res = await jsonpRequest({ action: "update_uid", sheet, uid: window.currentEditUID, row: JSON.stringify(values) });
-          if (!res || !res.success) alert("Update failed: " + (res && (res.error || res.message) || "unknown"));
-          window.currentEditUID = null;
-          window.currentEditSheet = null;
-        } else {
-          // append
-          const res = await jsonpRequest({ action: "append_uid", sheet, row: JSON.stringify(values) });
-          if (!res || !res.success) alert("Add failed: " + (res && (res.error || res.message) || "unknown"));
-        }
-        resetForm();
-        await renderSection(sheet, listDivId, formFields);
-        await loadDashboardData();
-      } catch (err) {
-        console.error("save error", err);
-        alert("Save failed (check console)");
-      }
-    });
-  }
-
-  if (resetBtn) resetBtn.addEventListener("click", resetForm);
+  const script = document.createElement('script');
+  script.src = url.replace("callback=callback", `callback=${cbName}`);
+  document.body.appendChild(script);
 }
 
-/* ---------------- CHATBOARD ---------------- */
-async function loadChatBoard(){
-  try {
-    const res = await jsonpRequest({ action: "fetch", sheet: "ChatBoard" });
-    const logEl = document.getElementById("chatLog");
-    if (!logEl) return;
-    logEl.innerHTML = "";
-    if (res && res.success && res.data.length) {
-      const rows = res.data.slice(-50); // last 50
-      rows.forEach(r => {
-        const div = document.createElement("div");
-        div.textContent = `[${r.Date}] ${r.Name}: ${r.Message}`;
-        logEl.appendChild(div);
-      });
-      logEl.scrollTop = logEl.scrollHeight;
-    } else {
-      const empty = document.createElement("div");
-      empty.className = "small-note";
-      empty.textContent = "No messages";
-      logEl.appendChild(empty);
+// ================= NAVIGATION =================
+function navTo(e, sectionId) {
+  e.preventDefault();
+  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+  const el = document.getElementById(sectionId);
+  if(el) el.style.display = 'block';
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  e.currentTarget.classList.add('active');
+}
+
+function navToElement(sectionId){
+  document.querySelectorAll('.section').forEach(sec => sec.style.display='none');
+  const el = document.getElementById(sectionId);
+  if(el) el.style.display='block';
+}
+
+// ================= FETCH / PREVIEWS =================
+function loadAllPreviews() {
+  Object.keys(SHEET_MAP).forEach(sec => {
+    if(sec !== 'users' && sec !== 'chatBoard') {
+      fetchSheet(sec, data => renderPreview(sec, data));
     }
-  } catch (err) {
-    console.error("chat load failed", err);
-  }
-}
-
-/* ---------------- STICKY NOTES ---------------- */
-function saveSticky(){
-  const v = document.getElementById("stickyNote").value;
-  localStorage.setItem("stickyNote", v);
-}
-function loadSticky(){
-  const v = localStorage.getItem("stickyNote");
-  if (v !== null) document.getElementById("stickyNote").value = v;
-}
-
-/* ---------------- MANUAL SYNC ---------------- */
-async function manualSync(){
-  await loadDashboardData();
-  await loadChatBoard();
-  loadSticky();
-  const el = document.getElementById("lastSync");
-  if (el) el.textContent = new Date().toLocaleTimeString();
-}
-
-/* ---------------- AUTO SYNC ---------------- */
-function startAutoSync(){
-  if (autoSyncInterval) clearInterval(autoSyncInterval);
-  autoSyncInterval = setInterval(manualSync, 15000);
-}
-
-/* ---------------- PDF EXPORT (simple) ---------------- */
-function printSectionPDF(sectionId, filename = "report", landscape = true) {
-  try {
-    const sec = document.getElementById(sectionId);
-    if (!sec) { alert("Section not found"); return; }
-
-    // collect text content of the section
-    const text = sec.innerText || sec.textContent;
-    // simple PDF generation using jsPDF (already included in your HTML)
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a4" });
-    const lines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - 40);
-    doc.setFontSize(10);
-    doc.text(lines, 20, 30);
-    doc.save(filename + ".pdf");
-  } catch (err) {
-    console.error("printSectionPDF error", err);
-    alert("PDF export failed (check console)");
-  }
-}
-
-/* ---------------- SETUP DASHBOARD (all sections) ---------------- */
-function setupDashboard(){
-  // load previews and chat and sticky and UI
-  loadDashboardData();
-  loadChatBoard();
-  loadSticky();
-
-  // set logout button visible
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) logoutBtn.style.display = "inline-block";
-
-  // Setup all sections with forms, add/update/delete
-  const sections = [
-    { sheet: "Vessel_Join", list: "vj_list", form: ["vjVessel","vjPort","vjNo","vjRank","vjDate","vjFlight"], add: "vjAddBtn", reset: "vjResetBtn" },
-    { sheet: "Arrivals", list: "ac_list", form: ["acVessel","acPort","acNo","acRank","acDate","acFlight"], add: "acAddBtn", reset: "acResetBtn" },
-    { sheet: "Daily_Updates", list: "du_list", form: ["duTitle","duDetails","duDate"], add: "duAddBtn", reset: "duResetBtn" },
-    { sheet: "Memo", list: "m_list", form: ["mTitle","mDetails","mDate"], add: "mAddBtn", reset: "mResetBtn" },
-    { sheet: "Training", list: "t_list", form: ["tSubject","tDetails","tDate"], add: "tAddBtn", reset: "tResetBtn" },
-    { sheet: "PNI", list: "p_list", form: ["pSubject","pDetails","pDate"], add: "pAddBtn", reset: "pResetBtn" }
-  ];
-
-  sections.forEach(s => {
-    setupSectionButtons(s.sheet, s.add, s.reset, s.form, s.list);
-    renderSection(s.sheet, s.list, s.form);
   });
+}
 
-  // chat send
-  const chatSend = document.getElementById("chatSendBtn");
-  if (chatSend) {
-    chatSend.addEventListener("click", async () => {
-      const name = document.getElementById("chatName").value.trim() || "Anonymous";
-      const msg = document.getElementById("chatMsg").value.trim();
-      if (!msg) return;
-      const row = [name, msg, new Date().toLocaleString()];
-      try {
-        await jsonpRequest({ action: "append_uid", sheet: "ChatBoard", row: JSON.stringify(row) });
-        document.getElementById("chatMsg").value = "";
-        await loadChatBoard();
-      } catch (err) { console.error("chat send error", err); alert("Failed to send"); }
+function fetchSheet(section, callback) {
+  const sheet = SHEET_MAP[section];
+  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
+  jsonp(url, function(res){
+    if(res.success) callback(res.data);
+    else callback([]);
+  });
+}
+
+function renderPreview(section, data) {
+  let containerId = '';
+  let countId = '';
+  switch(section){
+    case 'vesselJoin': containerId='vesselPreviewSmall'; countId='countVessel'; break;
+    case 'arrivingCrew': containerId='arrivalsPreviewSmall'; countId='countArrivals'; break;
+    case 'dailyUpdates': containerId='updatesPreviewSmall'; countId='countUpdates'; break;
+    case 'memo': containerId='memoPreviewSmall'; countId='countMemo'; break;
+    case 'training': containerId='trainingPreviewSmall'; countId='countTraining'; break;
+    case 'pni': containerId='pniPreviewSmall'; countId='countPNI'; break;
+  }
+  if(!containerId) return;
+  const container = document.getElementById(containerId);
+  const countEl = document.getElementById(countId);
+  container.innerHTML = '';
+  if(data.length === 0) container.innerHTML = '<small>No entries</small>';
+  else {
+    data.slice(-5).forEach(row => {
+      const div = document.createElement('div');
+      div.className = 'row-entry';
+      div.innerHTML = `<div class="left">${Object.values(row).join(' | ')}</div>`;
+      container.appendChild(div);
     });
   }
-
-  // manual sync button
-  const syncBtn = document.querySelector("button[onclick='manualSync()']");
-  if (syncBtn) syncBtn.addEventListener("click", manualSync);
-
-  // clear local button
-  const clearLocalBtn = document.querySelector("button[onclick='clearAllLocal()']");
-  if (clearLocalBtn) {
-    clearLocalBtn.addEventListener("click", () => {
-      if (confirm("Clear all local storage items (sticky note)?")) {
-        localStorage.removeItem("stickyNote");
-        alert("Local cleared");
-      }
-    });
-  }
-
-  startAutoSync();
+  if(countEl) countEl.innerText = data.length;
 }
 
-/* ---------------- UTIL: clearSection (used by your HTML) ---------------- */
-function clearSection(sectionId){
-  if(!confirm("Clear local entries for this section?")) return;
-  // we only store sticky locally; if there are other local caches implement here
-  alert("Cleared (no local cache implemented for sections). Use delete to remove sheet rows.");
+// ================= AUTO-SYNC =================
+let syncInterval = null;
+function startAutoSync() {
+  if(syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(loadAllPreviews, 15000);
 }
 
-/* ---------------- UTIL: clearAllLocal (used by your HTML) ---------------- */
-function clearAllLocal(){
-  if(!confirm("Clear all local storage?")) return;
-  localStorage.clear();
-  alert("All local storage cleared.");
+function manualSync() { loadAllPreviews(); }
+
+// ================= STICKY NOTE =================
+function saveSticky() {
+  const val = document.getElementById('stickyNote').value;
+  localStorage.setItem('stickyNote', val);
 }
 
-/* ---------------- BOOT / EVENT BINDINGS ---------------- */
-window.addEventListener("DOMContentLoaded", () => {
-  // attach login button
-  const loginBtn = document.getElementById("loginBtn");
-  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+document.addEventListener('DOMContentLoaded', () => {
+  // Load sticky note
+  const saved = localStorage.getItem('stickyNote');
+  if(saved) document.getElementById('stickyNote').value = saved;
 
-  // attach logout
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) logoutBtn.addEventListener("click", logout);
-
-  // show login overlay
-  const loginOverlay = document.getElementById("loginOverlay");
-  if (loginOverlay) loginOverlay.style.display = "flex";
-
-  // attach print buttons (buttons call printSectionPDF inline; function exists)
-  // attach manual sync and clearAllLocal if necessary (we wired them in setupDashboard too)
-
-  // load sticky content if any
-  loadSticky();
+  // Show login
+  showLogin();
 });
 </script>
