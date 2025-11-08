@@ -452,6 +452,14 @@ function navToElement(sectionId){
   // helper for button "Open"
   navTo(null, sectionId);
 }
+window.navTo = navTo;
+window.navToElement = navToElement;
+window.doLogin = doLogin;
+window.logout = logout;
+window.clearAllLocal = clearAllLocal;
+window.clearSection = clearSection;
+window.manualSync = manualSync;
+window.printSectionPDF = printSectionPDF;
 
 /* ---------------- LOGIN ---------------- */
 async function doLogin() {
