@@ -46,29 +46,29 @@
 <body>
 
 <!-- LOGIN SCREEN -->
-<div id="loginScreen" class="login-screen" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:3000">
-  <div class="card p-4" style="width:420px;border-radius:12px">
+<div id="loginScreen" class="login-screen" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999;">
+  <div class="card p-4" style="width:420px;border-radius:12px;background:white;">
+    
     <div class="text-center mb-3">
       <h4 style="margin:0">TIWALA — SeaCrew Dashboard</h4>
       <small class="small-note">Sign in to continue</small>
     </div>
 
-    <div class="mb-2">
-      <label class="form-label">Username</label>
-      <input id="loginUsername" class="form-control" />
-    </div>
     <div class="mb-3">
-      <label class="form-label">Password</label>
-      <input id="loginPassword" type="password" class="form-control" />
+      <label>Username</label>
+      <input id="loginUsername" type="text" class="form-control" placeholder="Enter username">
     </div>
 
-    <div class="d-flex justify-content-between align-items-center">
-      <div><button class="btn btn-outline-secondary" id="loginResetBtn">Reset</button></div>
-      <div>
-        <button class="btn btn-primary" id="loginBtn">Sign in</button>
-      </div>
+    <div class="mb-3">
+      <label>Password</label>
+      <input id="loginPassword" type="password" class="form-control" placeholder="Enter password">
     </div>
-    <div class="mt-2 small-note">If you have no account, contact admin.</div>
+
+    <div class="d-flex gap-2 justify-content-end mt-4">
+      <button id="loginResetBtn" class="btn btn-secondary">Reset</button>
+      <button id="loginBtn" class="btn btn-primary">Sign In</button>
+    </div>
+
   </div>
 </div>
 
