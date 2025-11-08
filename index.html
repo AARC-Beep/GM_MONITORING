@@ -68,6 +68,38 @@
       <button id="loginResetBtn" class="btn btn-secondary">Reset</button>
       <button id="loginBtn" class="btn btn-primary">Sign In</button>
     </div>
+<!-- LOGIN SCREEN HTML here -->
+
+<script>
+  // Your JS code here
+  const loginBtn = document.getElementById("loginBtn");
+  const loginResetBtn = document.getElementById("loginResetBtn");
+  const loginUsername = document.getElementById("loginUsername");
+  const loginPassword = document.getElementById("loginPassword");
+  const loginScreen = document.getElementById("loginScreen");
+
+  loginBtn.onclick = async () => {
+    const u = loginUsername.value.trim();
+    const p = loginPassword.value.trim();
+    if (!u || !p) return alert("Enter username & password");
+
+    const resp = await callServerAuth(u, p);
+
+    if (resp && resp.status === "success" && resp.role) {
+      CURRENT_USER = { username: u, role: resp.role };
+      loginScreen.style.display = "none";
+      await syncFromSheet();
+      renderAll();
+    } else {
+      alert(resp.message || "Login failed");
+    }
+  };
+
+  loginResetBtn.onclick = () => {
+    loginUsername.value = "";
+    loginPassword.value = "";
+  };
+</script>
 
   </div>
 </div>
@@ -1298,19 +1330,24 @@ function clearForm(short){
 }
 
 
-/* ============================================================
-   LOGIN CONTROL
-=============================================================== */
-loginBtn.onclick = async ()=>{
+// Grab elements from the DOM
+const loginBtn = document.getElementById("loginBtn");
+const loginResetBtn = document.getElementById("loginResetBtn");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const loginScreen = document.getElementById("loginScreen");
+
+// Login button click
+loginBtn.onclick = async () => {
   const u = loginUsername.value.trim();
   const p = loginPassword.value.trim();
-  if(!u || !p) return alert("Enter username & password");
+  if (!u || !p) return alert("Enter username & password");
 
-  const resp = await callServerAuth(u,p);
+  const resp = await callServerAuth(u, p);
 
-  if(resp && resp.status==="success" && resp.role){
-    CURRENT_USER = { username:u, role:resp.role };
-    loginScreen.style.display="none";
+  if (resp && resp.status === "success" && resp.role) {
+    CURRENT_USER = { username: u, role: resp.role };
+    loginScreen.style.display = "none";
     await syncFromSheet();
     renderAll();
   } else {
@@ -1318,9 +1355,10 @@ loginBtn.onclick = async ()=>{
   }
 };
 
-loginResetBtn.onclick = ()=>{
-  loginUsername.value="";
-  loginPassword.value="";
+// Reset button click
+loginResetBtn.onclick = () => {
+  loginUsername.value = "";
+  loginPassword.value = "";
 };
 
 
