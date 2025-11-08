@@ -1,413 +1,213 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SeaCrew Dashboard — Daily Routine Log</title>
-
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <!-- jsPDF + AutoTable (for PDF export) -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <style>
-  :root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
-  body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
-  .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
-  .sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
-  .sidebar a { display:block; color:#cfe8ff; padding:10px 12px; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:500; }
-  .sidebar a:hover { background: rgba(255,255,255,0.05); color:#fff; text-decoration:none; }
-  .sidebar a.active { background:#072033; color:#fff; }
-  .content { margin-left: calc(var(--sidebar-width) + 28px); padding:24px; min-height:100vh; }
-  .card-slim { padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(9,30,66,0.06); background:#fff; margin-bottom:16px; }
-  .small-note { font-size:0.9rem; color:#666; }
-  .preview-table { max-height:200px; overflow:auto; padding:8px; background:#fafbff; border-radius:8px; border:1px solid #eef3fb;}
-  .entry-card { border:1px solid #e9eef6; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:#fff; }
-  .entry-meta { color:#444; font-size:0.95rem; }
-  .form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .form-row .form-control { min-width:140px; }
-  .entry-actions button { margin-left:6px; }
-  .fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
-  .row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
-  .row-entry .left { flex:1; }
-  .row-entry .right { display:flex; gap:8px; align-items:center; }
-  .chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
-  .chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
-  .chat-inputs { display:flex; gap:8px; align-items:center; }
-  @media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
-  @media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
-  .btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
-  .badge-synced { color: #0b6623; font-weight:600; margin-left:8px }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeaCrew Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:0; }
+  .hidden { display:none; }
+  .container { padding: 20px; }
+  .login-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#f0f0f0; display:flex; justify-content:center; align-items:center; z-index:1000; }
+  .login-box { background:#fff; padding:20px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.2); width:300px; }
+  .row-entry { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; }
+  .left { flex:1; }
+  .right button { margin-left:4px; }
+  .small-note { font-size:0.8em; color:#666; }
+  .badge-synced { color:green; font-weight:700; }
+  input, textarea, select { width:100%; padding:6px; margin:4px 0; box-sizing:border-box; }
+  button { cursor:pointer; padding:6px 10px; border-radius:4px; border:none; }
+  .btn-outline-primary { border:1px solid #007bff; background:#fff; color:#007bff; }
+  .btn-outline-danger { border:1px solid #dc3545; background:#fff; color:#dc3545; }
+</style>
 </head>
 <body>
 
 <!-- LOGIN SCREEN -->
-<div id="loginScreen" class="login-screen" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999;">
-  <div class="card p-4" style="width:420px;border-radius:12px;background:white;">
-    
-    <div class="text-center mb-3">
-      <h4 style="margin:0">TIWALA — SeaCrew Dashboard</h4>
-      <small class="small-note">Sign in to continue</small>
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h3>SeaCrew Dashboard</h3>
+    <input type="text" id="loginUsername" placeholder="Username">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <div style="margin-top:10px;">
+      <button id="loginBtn" class="btn btn-outline-primary">Login</button>
+      <button id="loginResetBtn" class="btn btn-outline-danger">Reset</button>
     </div>
-
-    <div class="mb-3">
-      <label>Username</label>
-      <input id="loginUsername" type="text" class="form-control" placeholder="Enter username">
-    </div>
-
-    <div class="mb-3">
-      <label>Password</label>
-      <input id="loginPassword" type="password" class="form-control" placeholder="Enter password">
-    </div>
-
-    <div class="d-flex gap-2 justify-content-end mt-4">
-      <button id="loginResetBtn" class="btn btn-secondary">Reset</button>
-      <button id="loginBtn" class="btn btn-primary">Sign In</button>
-    </div>
-<!-- LOGIN SCREEN HTML here -->
-
-<script>
-  // Your JS code here
-  const loginBtn = document.getElementById("loginBtn");
-  const loginResetBtn = document.getElementById("loginResetBtn");
-  const loginUsername = document.getElementById("loginUsername");
-  const loginPassword = document.getElementById("loginPassword");
-  const loginScreen = document.getElementById("loginScreen");
-
-  loginBtn.onclick = async () => {
-    const u = loginUsername.value.trim();
-    const p = loginPassword.value.trim();
-    if (!u || !p) return alert("Enter username & password");
-
-    const resp = await callServerAuth(u, p);
-
-    if (resp && resp.status === "success" && resp.role) {
-      CURRENT_USER = { username: u, role: resp.role };
-      loginScreen.style.display = "none";
-      await syncFromSheet();
-      renderAll();
-    } else {
-      alert(resp.message || "Login failed");
-    }
-  };
-
-  loginResetBtn.onclick = () => {
-    loginUsername.value = "";
-    loginPassword.value = "";
-  };
-</script>
-
   </div>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar" aria-label="Main navigation">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY ROUTINE LOG</h4>
+<div class="container">
+  <h2>SeaCrew Dashboard</h2>
 
-  <a href="#" class="active" data-target="dashboard" onclick="navTo(event,'dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-  <a href="#" data-target="vesselJoin" onclick="navTo(event,'vesselJoin')"><i class="fa-solid fa-ship"></i> Vessel Crew Joining</a>
-  <a href="#" data-target="arrivingCrew" onclick="navTo(event,'arrivingCrew')"><i class="fa-solid fa-plane-departure"></i> Arriving Crew</a>
-  <a href="#" data-target="dailyUpdates" onclick="navTo(event,'dailyUpdates')"><i class="fa-regular fa-calendar-days"></i> Daily Updates</a>
-  <a href="#" data-target="memo" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
-  <a href="#" data-target="training" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
-  <a href="#" data-target="pni" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&amp;I / Events</a>
-  <a href="#" data-target="helpSection" onclick="navTo(event,'helpSection')"><i class="fa-solid fa-circle-info"></i> Help / User Guide</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-
-  <!-- External links requested -->
-  <a href="https://flightaware.com/live/airport/RPLL" target="_blank" rel="noopener"><i class="fa-solid fa-plane"></i> Flights — FlightAware (MNL)</a>
-  <a href="https://www.msn.com/en-ph/news" target="_blank" rel="noopener"><i class="fa-solid fa-newspaper"></i> News — MSN Philippines</a>
-  <a href="https://zoom.earth/" target="_blank" rel="noopener"><i class="fa-solid fa-cloud-sun"></i> Weather — Zoom Earth</a>
-  <a href="https://dmw.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-passport"></i> DMW — Dept. of Migrant Workers</a>
-  <a href="https://owwa.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> OWWA</a>
-  <a href="https://marina.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-anchor"></i> MARINA</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-  <div class="small-note">Tip: Dashboard auto-syncs every 15s. If offline, entries save locally and will sync when online.</div>
-</nav>
-
-<!-- Main content -->
-<main class="content" role="main">
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h2 style="margin:0">SeaCrew Dashboard</h2>
-      <div class="small-note">Connected to Google Apps Script web app: <strong>DAILY ROUTINE LOG</strong></div>
-    </div>
-
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="manualSync()"><i class="fa-solid fa-arrows-rotate"></i> Sync now</button>
-      <button class="btn btn-outline-danger" onclick="clearAllLocal()"><i class="fa-solid fa-trash-can"></i> Clear local</button>
-      <button class="btn btn-primary" onclick="printSectionPDF('dashboard','SeaCrew_Monthly_Report',true)"><i class="fa-solid fa-file-pdf"></i> Monthly PDF</button>
-    </div>
+  <!-- Sticky Note -->
+  <div>
+    <h4>Sticky Note</h4>
+    <textarea id="stickyNote" rows="3"></textarea>
+    <button onclick="saveSticky()" class="btn btn-outline-primary">Save Note</button>
   </div>
 
-  <!-- DASHBOARD (previews + chatboard) -->
-  <section id="dashboard" class="section active">
-    <div class="row g-3">
-      <!-- Previews columns -->
-      <div class="col-md-8">
-        <div class="card-slim">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 style="margin:0">Quick Overview</h5>
-            <div><small class="small-note">Last sync: <span id="lastSync">—</span></small></div>
-          </div>
+  <hr>
 
-          <div class="row g-3 mt-3">
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Vessel Joining <small class="small-note">(<span id="countVessel">0</span>)</small></h6>
-                <div class="preview-table" id="vesselPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('vesselJoin')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Arrivals <small class="small-note">(<span id="countArrivals">0</span>)</small></h6>
-                <div class="preview-table" id="arrivalsPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('arrivingCrew')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Updates <small class="small-note">(<span id="countUpdates">0</span>)</small></h6>
-                <div class="preview-table" id="updatesPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('dailyUpdates')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Memo <small class="small-note">(<span id="countMemo">0</span>)</small></h6>
-                <div class="preview-table" id="memoPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('memo')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Training <small class="small-note">(<span id="countTraining">0</span>)</small></h6>
-                <div class="preview-table" id="trainingPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('training')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>P&amp;I <small class="small-note">(<span id="countPNI">0</span>)</small></h6>
-                <div class="preview-table" id="pniPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('pni')">Open</button></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatboard / Sticky -->
-      <div class="col-md-4">
-        <div class="card-slim">
-          <div class="d-flex justify-content-between align-items-center">
-            <h6 style="margin:0">ChatBoard (public view)</h6>
-            <div><i id="chatBell" class="fa-solid fa-bell" style="color:#888"></i></div>
-          </div>
-          <div class="chatboard mt-2">
-            <div class="chat-log" id="chatLog"></div>
-            <div class="chat-inputs">
-              <input id="chatName" class="form-control" placeholder="Your name (visible)" value="Captain" />
-              <input id="chatMsg" class="form-control" placeholder="Message" />
-              <button class="btn btn-primary" id="chatSendBtn">Send</button>
-            </div>
-            <small class="small-note">Only messages posted here are saved to the ChatBoard sheet.</small>
-          </div>
-        </div>
-
-        <div class="card-slim mt-3">
-          <h6>Sticky / Quick Note</h6>
-          <textarea id="stickyNote" class="form-control" rows="6" placeholder="Quick note — saved locally only"></textarea>
-          <div class="d-flex justify-content-end mt-2">
-            <button class="btn btn-outline-secondary me-2" onclick="localStorage.removeItem('stickyNote'); document.getElementById('stickyNote').value='';">Clear</button>
-            <button class="btn btn-primary" onclick="saveSticky()">Save</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- Sections: Vessel Join / Arrivals / Updates / Memo / Training / PNI ---------- -->
   <!-- Vessel Join -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Vessel Crew Joining</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
-      </div>
-    </div>
+  <div>
+    <h3>Vessel Join (<span id="countVessel">0</span>)</h3>
+    <input type="text" id="vjVessel" placeholder="Vessel">
+    <input type="text" id="vjPort" placeholder="Port">
+    <input type="number" id="vjNo" placeholder="No. of Crew">
+    <input type="text" id="vjRank" placeholder="Rank">
+    <input type="date" id="vjDate">
+    <input type="text" id="vjFlight" placeholder="Flight">
+    <button id="vjAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="vjResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="vj_list"></div>
+    <div id="vesselPreviewSmall" class="small-note"></div>
+  </div>
 
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="vjVessel">
-        <input class="form-control" placeholder="Port" id="vjPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
-        <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
-        <input class="form-control" placeholder="Flight" id="vjFlight">
+  <hr>
 
-        <button class="btn btn-success" id="vjAddBtn">Add</button>
-        <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-      </div>
-    </div>
+  <!-- Arrivals -->
+  <div>
+    <h3>Arrivals (<span id="countArrivals">0</span>)</h3>
+    <input type="text" id="acVessel" placeholder="Vessel">
+    <input type="text" id="acPort" placeholder="Port">
+    <input type="number" id="acNo" placeholder="No. of Crew">
+    <input type="text" id="acRank" placeholder="Rank">
+    <input type="date" id="acDate">
+    <input type="text" id="acFlight" placeholder="Flight">
+    <button id="acAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="acResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="ac_list"></div>
+    <div id="arrivalsPreviewSmall" class="small-note"></div>
+  </div>
 
-    <div id="vj_list" class="card-slim"></div>
-  </section>
+  <hr>
 
-  <!-- Arriving Crew -->
-  <section id="arrivingCrew" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Arriving Crew</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('arrivingCrew','Arrivals')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('arrivingCrew')">Clear All (local)</button>
-      </div>
-    </div>
+  <!-- Updates -->
+  <div>
+    <h3>Updates (<span id="countUpdates">0</span>)</h3>
+    <input type="text" id="duTitle" placeholder="Title">
+    <textarea id="duDetails" rows="2" placeholder="Details"></textarea>
+    <input type="date" id="duDate">
+    <button id="duAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="duResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="du_list"></div>
+    <div id="updatesPreviewSmall" class="small-note"></div>
+  </div>
 
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="acVessel">
-        <input class="form-control" placeholder="Port" id="acPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="acNo">
-        <input class="form-control" placeholder="Rank" id="acRank">
-        <input class="form-control" placeholder="Arrival Date" type="date" id="acDate">
-        <input class="form-control" placeholder="Flight" id="acFlight">
-        <button class="btn btn-success" id="acAddBtn">Add</button>
-        <button class="btn btn-secondary" id="acResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="ac_list" class="card-slim"></div>
-  </section>
-
-  <!-- Daily Updates -->
-  <section id="dailyUpdates" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Daily Updates</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('dailyUpdates','Daily_Updates')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('dailyUpdates')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="duTitle">
-        <input class="form-control" placeholder="Details" id="duDetails">
-        <input class="form-control" type="date" id="duDate">
-        <button class="btn btn-success" id="duAddBtn">Add</button>
-        <button class="btn btn-secondary" id="duResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="du_list" class="card-slim"></div>
-  </section>
+  <hr>
 
   <!-- Memo -->
-  <section id="memo" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Memo</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('memo','Memo')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('memo')">Clear All (local)</button>
-      </div>
-    </div>
+  <div>
+    <h3>Memo (<span id="countMemo">0</span>)</h3>
+    <input type="text" id="mTitle" placeholder="Title">
+    <textarea id="mDetails" rows="2" placeholder="Details"></textarea>
+    <input type="date" id="mDate">
+    <button id="mAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="mResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="m_list"></div>
+    <div id="memoPreviewSmall" class="small-note"></div>
+  </div>
 
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="mTitle">
-        <input class="form-control" placeholder="Details" id="mDetails">
-        <input class="form-control" type="date" id="mDate">
-        <button class="btn btn-success" id="mAddBtn">Add</button>
-        <button class="btn btn-secondary" id="mResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="m_list" class="card-slim"></div>
-  </section>
+  <hr>
 
   <!-- Training -->
-  <section id="training" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Training</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('training','Training')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('training')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="tSubject">
-        <input class="form-control" placeholder="Details" id="tDetails">
-        <input class="form-control" type="date" id="tDate">
-        <button class="btn btn-success" id="tAddBtn">Add</button>
-        <button class="btn btn-secondary" id="tResetBtn">Reset</button>
-      </div>
-    </div>
-    
-    <div id="t_list" class="card-slim"></div>
-   </section>
-
- <!-- PnI -->
-<section id="pni" class="section" style="display:none">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <h4>P&amp;I / Events</h4>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
-      <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
-    </div>
+  <div>
+    <h3>Training (<span id="countTraining">0</span>)</h3>
+    <input type="text" id="tSubject" placeholder="Subject">
+    <textarea id="tDetails" rows="2" placeholder="Details"></textarea>
+    <input type="date" id="tDate">
+    <button id="tAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="tResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="t_list"></div>
+    <div id="trainingPreviewSmall" class="small-note"></div>
   </div>
 
-  <div class="card-slim mb-3">
-    <div class="form-row">
-      <input class="form-control" placeholder="Subject" id="pSubject">
-      <input class="form-control" placeholder="Details" id="pDetails">
-      <input class="form-control" type="date" id="pDate">
-      <button class="btn btn-success" id="pAddBtn">Add</button>
-      <button class="btn btn-secondary" id="pResetBtn">Reset</button>
-    </div>
+  <hr>
+
+  <!-- PNI -->
+  <div>
+    <h3>PNI (<span id="countPNI">0</span>)</h3>
+    <input type="text" id="pSubject" placeholder="Subject">
+    <textarea id="pDetails" rows="2" placeholder="Details"></textarea>
+    <input type="date" id="pDate">
+    <button id="pAddBtn" class="btn btn-outline-primary">Add / Update</button>
+    <button id="pResetBtn" class="btn btn-outline-danger">Reset</button>
+    <div id="p_list"></div>
+    <div id="pniPreviewSmall" class="small-note"></div>
   </div>
-  <div id="p_list" class="card-slim"></div>
-</section>
 
-  <!-- HELP / USER GUIDE -->
-  <section id="helpSection" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>User Guide / Help</h4>
-      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('helpSection','User_Guide')">Export PDF</button>
-    </div>
+  <hr>
 
-    <div class="card-slim" style="font-size:14px; line-height:1.5">
-      <h5>SeaCrew Dashboard — Daily Routine Log</h5>
-      <p>This guide explains how to use the dashboard: login, add/update/delete entries, chatboard and monthly report.</p>
-      <ol>
-        <li>Login with your Username / Password (stored in the Users sheet).</li>
-        <li>Use the left sidebar to navigate sections.</li>
-        <li>Only Admins can edit/archive entries; Users can add only (role enforced after login).</li>
-        <li>Delete moves entries to Archive_&lt;SheetName&gt; so monthly reports still include deleted items.</li>
-      </ol>
-    </div>
-  </section>
+  <!-- ChatBoard -->
+  <div>
+    <h3>ChatBoard</h3>
+    <input type="text" id="chatName" placeholder="Name">
+    <input type="text" id="chatMsg" placeholder="Message">
+    <button id="chatSendBtn" class="btn btn-outline-primary">Send</button>
+    <div id="chatLog" style="border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto; margin-top:10px;"></div>
+  </div>
+</div>
 
-  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
-</main>
+<!-- JS -->
+<script>
+// --- Paste your full JS code here ---
+// Include all the code you shared, but make sure to:
+// 1. Merge init() functions into 1
+// 2. Add DOM element references:
+const vjVessel = document.getElementById("vjVessel");
+const vjPort   = document.getElementById("vjPort");
+const vjNo     = document.getElementById("vjNo");
+const vjRank   = document.getElementById("vjRank");
+const vjDate   = document.getElementById("vjDate");
+const vjFlight = document.getElementById("vjFlight");
+const vjAddBtn = document.getElementById("vjAddBtn");
+const vjResetBtn = document.getElementById("vjResetBtn");
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+const acVessel = document.getElementById("acVessel");
+const acPort   = document.getElementById("acPort");
+const acNo     = document.getElementById("acNo");
+const acRank   = document.getElementById("acRank");
+const acDate   = document.getElementById("acDate");
+const acFlight = document.getElementById("acFlight");
+const acAddBtn = document.getElementById("acAddBtn");
+const acResetBtn = document.getElementById("acResetBtn");
+
+const duTitle = document.getElementById("duTitle");
+const duDetails = document.getElementById("duDetails");
+const duDate = document.getElementById("duDate");
+const duAddBtn = document.getElementById("duAddBtn");
+const duResetBtn = document.getElementById("duResetBtn");
+
+const mTitle = document.getElementById("mTitle");
+const mDetails = document.getElementById("mDetails");
+const mDate = document.getElementById("mDate");
+const mAddBtn = document.getElementById("mAddBtn");
+const mResetBtn = document.getElementById("mResetBtn");
+
+const tSubject = document.getElementById("tSubject");
+const tDetails = document.getElementById("tDetails");
+const tDate = document.getElementById("tDate");
+const tAddBtn = document.getElementById("tAddBtn");
+const tResetBtn = document.getElementById("tResetBtn");
+
+const pSubject = document.getElementById("pSubject");
+const pDetails = document.getElementById("pDetails");
+const pDate = document.getElementById("pDate");
+const pAddBtn = document.getElementById("pAddBtn");
+const pResetBtn = document.getElementById("pResetBtn");
+
+const chatName = document.getElementById("chatName");
+const chatMsg = document.getElementById("chatMsg");
+const chatSendBtn = document.getElementById("chatSendBtn");
+
+const stickyNote = document.getElementById("stickyNote");
+
+const loginBtn = document.getElementById("loginBtn");
+const loginResetBtn = document.getElementById("loginResetBtn");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const loginScreen = document.getElementById("loginScreen");
 
 (function(){
 "use strict";
