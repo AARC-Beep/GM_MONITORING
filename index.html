@@ -55,24 +55,37 @@
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
-<div id="loginOverlay" class="login-overlay" style="display:none">
-  <div class="login-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 style="margin:0">TIWALA — SeaCrew Login</h5>
-      <img src="" alt="" style="width:36px;opacity:.4"/>
-    </div>
-    <div>
-      <div class="mb-2"><input id="loginUser" class="form-control" placeholder="Username"></div>
-      <div class="mb-2"><input id="loginPass" type="password" class="form-control" placeholder="Password"></div>
-      <div class="d-flex justify-content-between align-items-center">
-        <div><input type="checkbox" id="saveCred"> <label for="saveCred">Remember (local only)</label></div>
-        <div><button id="loginBtn" class="btn btn-primary">Sign in</button></div>
-      </div>
-      <div class="mt-2 small-note" id="loginMsg"></div>
-    </div>
-  </div>
-</div>
+// Grab elements from the DOM
+const loginBtn = document.getElementById("loginBtn");
+const loginResetBtn = document.getElementById("loginResetBtn");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const loginScreen = document.getElementById("loginScreen");
+
+// Login button click
+loginBtn.onclick = async () => {
+  const u = loginUsername.value.trim();
+  const p = loginPassword.value.trim();
+  if (!u || !p) return alert("Enter username & password");
+
+  const resp = await callServerAuth(u, p);
+
+  if (resp && resp.status === "success" && resp.role) {
+    CURRENT_USER = { username: u, role: resp.role };
+    loginScreen.style.display = "none";
+    await syncFromSheet();
+    renderAll();
+  } else {
+    alert(resp.message || "Login failed");
+  }
+};
+
+// Reset button click
+loginResetBtn.onclick = () => {
+  loginUsername.value = "";
+  loginPassword.value = "";
+};
+
 
 <!-- Sidebar -->
 <nav class="sidebar" aria-label="Main navigation">
