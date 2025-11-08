@@ -381,7 +381,10 @@
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
+/* ============================================================
+   SeaCrew Dashboard — Full JS with Add/Update/Delete + ChatBoard + PDF
+===============================================================*/
+
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
 const SHEET_MAP = {
   vesselJoin: "Vessel_join",
@@ -390,149 +393,223 @@ const SHEET_MAP = {
   memo: "Memo",
   training: "Training",
   pni: "Pni",
-  chatBoard: "ChatBoard",
-  users: "Users"
+  chatBoard: "ChatBoard"
 };
 
-let currentUser = null;
+let currentUser = "";
+let lastChatLength = 0;
 
-// ================= LOGIN =================
-function showLogin() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-}
-
-function hideLogin() {
-  document.getElementById('loginOverlay').style.display = 'none';
-}
-
-function login() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
-  const msg = document.getElementById('loginMsg');
-
-  if (!username || !password) {
-    msg.innerText = "Enter username and password";
-    return;
-  }
-
-  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
-  jsonp(url, function(res) {
-    if (res.status === "success") {
-      currentUser = res.username;
-      hideLogin();
-      document.getElementById('logoutBtn').style.display = "inline-block";
-      startAutoSync();
-      loadAllPreviews();
-    } else {
-      msg.innerText = res.message || "Login failed";
-    }
-  });
-}
-
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('logoutBtn').addEventListener('click', logout);
-
-function logout() {
-  currentUser = null;
-  document.getElementById('logoutBtn').style.display = "none";
-  showLogin();
-}
-
-// ================= JSONP HELPER =================
-function jsonp(url, callback) {
-  const cbName = "cb" + Math.floor(Math.random()*100000);
-  window[cbName] = function(res) {
-    callback(res);
-    delete window[cbName];
+// ----------------------- JSONP helper -----------------------
+function jsonp(url, cb) {
+  const script = document.createElement("script");
+  const callbackName = "callback_" + Math.random().toString(36).substr(2, 9);
+  window[callbackName] = function (data) {
+    cb(data);
+    delete window[callbackName];
     script.remove();
   };
-  const script = document.createElement('script');
-  script.src = url.replace("callback=callback", `callback=${cbName}`);
+  script.src = url + "&callback=" + callbackName;
   document.body.appendChild(script);
 }
 
-// ================= NAVIGATION =================
-function navTo(e, sectionId) {
-  e.preventDefault();
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
-  const el = document.getElementById(sectionId);
-  if(el) el.style.display = 'block';
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-  e.currentTarget.classList.add('active');
-}
+// ----------------------- LOGIN -----------------------
+document.getElementById("loginBtn").addEventListener("click", login);
+function login() {
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value.trim();
+  if (!username || !password) return alert("Enter username and password");
 
-function navToElement(sectionId){
-  document.querySelectorAll('.section').forEach(sec => sec.style.display='none');
-  const el = document.getElementById(sectionId);
-  if(el) el.style.display='block';
-}
-
-// ================= FETCH / PREVIEWS =================
-function loadAllPreviews() {
-  Object.keys(SHEET_MAP).forEach(sec => {
-    if(sec !== 'users' && sec !== 'chatBoard') {
-      fetchSheet(sec, data => renderPreview(sec, data));
+  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+  jsonp(url, res => {
+    if (res.success) {
+      currentUser = res.username;
+      document.getElementById("loginOverlay").style.display = "none";
+      document.getElementById("logoutBtn").style.display = "inline-block";
+      fetchAllData();
+      pollChatBoard();
+    } else {
+      document.getElementById("loginMsg").innerText = "Invalid credentials";
     }
   });
 }
 
-function fetchSheet(section, callback) {
+document.getElementById("logoutBtn").addEventListener("click", () => location.reload());
+
+// ----------------------- FETCH SHEETS -----------------------
+function fetchSheet(section, cb) {
   const sheet = SHEET_MAP[section];
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
-  jsonp(url, function(res){
-    if(res.success) callback(res.data);
-    else callback([]);
+  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}`;
+  jsonp(url, res => { cb(res.success ? res.data : []); });
+}
+
+function fetchAllData() {
+  Object.keys(SHEET_MAP).forEach(section => fetchSheet(section, data => renderPreview(section, data)));
+}
+
+// ----------------------- RENDER PREVIEWS -----------------------
+function renderPreview(section, data) {
+  let containerId = "", countId = "";
+  switch(section){
+    case 'vesselJoin': containerId='vj_list'; countId='countVessel'; break;
+    case 'arrivingCrew': containerId='ac_list'; countId='countArrivals'; break;
+    case 'dailyUpdates': containerId='du_list'; countId='countUpdates'; break;
+    case 'memo': containerId='m_list'; countId='countMemo'; break;
+    case 'training': containerId='t_list'; countId='countTraining'; break;
+    case 'pni': containerId='p_list'; countId='countPNI'; break;
+    case 'chatBoard': containerId='chatLog'; break;
+  }
+  if (!containerId) return;
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  if (data.length === 0) container.innerHTML = '<small>No entries</small>';
+  else data.slice(-50).forEach(row => {
+    const uid = row.UID || row.uid || Math.random().toString(36).substr(2, 9);
+    if (section === 'chatBoard') {
+      const div = document.createElement('div'); 
+      div.innerHTML = `<strong>${row.Name}:</strong> ${row.Message}`;
+      container.appendChild(div);
+    } else {
+      const div = document.createElement('div'); 
+      div.className = 'row-entry';
+      div.innerHTML = `
+        <div class="left">${Object.values(row).join(' | ')}</div>
+        <div class="right">
+          <button class="btn btn-sm btn-outline-primary" onclick="editRow('${section}','${uid}')"><i class="fa fa-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteRow('${section}','${uid}')"><i class="fa fa-trash"></i></button>
+        </div>`;
+      container.appendChild(div);
+    }
+  });
+  if (countId) document.getElementById(countId).innerText = data.length;
+}
+
+// ----------------------- EDIT / UPDATE -----------------------
+function editRow(section, uid) {
+  fetchSheet(section, data => {
+    const row = data.find(r => String(r.UID || r.uid) === uid);
+    if (!row) return alert('Row not found');
+    switch(section){
+      case 'vesselJoin':
+        ['Vessel','Port','No','Rank','DepartDate','Flight'].forEach(f=>{
+          document.getElementById('vj'+f).value = row[f] || '';
+        }); setUpdateHandler('vesselJoin', uid); break;
+      case 'arrivingCrew':
+        ['Vessel','Port','No','Rank','ArrivalDate','Flight'].forEach(f=>{
+          document.getElementById('ac'+f).value = row[f] || '';
+        }); setUpdateHandler('arrivingCrew', uid); break;
+      case 'dailyUpdates':
+        ['Title','Details','Date'].forEach(f=>{
+          document.getElementById('du'+f).value=row[f]||'';
+        }); setUpdateHandler('dailyUpdates', uid); break;
+      case 'memo':
+        ['Title','Details','Date'].forEach(f=>{
+          document.getElementById('m'+f).value=row[f]||'';
+        }); setUpdateHandler('memo', uid); break;
+      case 'training':
+        ['Subject','Details','Date'].forEach(f=>{
+          document.getElementById('t'+f).value=row[f]||'';
+        }); setUpdateHandler('training', uid); break;
+      case 'pni':
+        ['Subject','Details','Date'].forEach(f=>{
+          document.getElementById('p'+f).value=row[f]||'';
+        }); setUpdateHandler('pni', uid); break;
+    }
   });
 }
 
-function renderPreview(section, data) {
-  let containerId = '';
-  let countId = '';
+function setUpdateHandler(section, uid) {
+  const btnMap = {vesselJoin:'vjAddBtn', arrivingCrew:'acAddBtn', dailyUpdates:'duAddBtn', memo:'mAddBtn', training:'tAddBtn', pni:'pAddBtn'};
+  const addBtn = document.getElementById(btnMap[section]);
+  const originalText = addBtn.innerText;
+  addBtn.innerText = 'Update';
+  const handler = () => { updateRow(section, uid); addBtn.innerText = originalText; addBtn.removeEventListener('click', handler); };
+  addBtn.addEventListener('click', handler);
+}
+
+function updateRow(section, uid) {
+  let fields = [];
   switch(section){
-    case 'vesselJoin': containerId='vesselPreviewSmall'; countId='countVessel'; break;
-    case 'arrivingCrew': containerId='arrivalsPreviewSmall'; countId='countArrivals'; break;
-    case 'dailyUpdates': containerId='updatesPreviewSmall'; countId='countUpdates'; break;
-    case 'memo': containerId='memoPreviewSmall'; countId='countMemo'; break;
-    case 'training': containerId='trainingPreviewSmall'; countId='countTraining'; break;
-    case 'pni': containerId='pniPreviewSmall'; countId='countPNI'; break;
+    case 'vesselJoin':
+      fields = ['Vessel','Port','No','Rank','DepartDate','Flight'].map(f=>document.getElementById('vj'+f).value); break;
+    case 'arrivingCrew':
+      fields = ['Vessel','Port','No','Rank','ArrivalDate','Flight'].map(f=>document.getElementById('ac'+f).value); break;
+    case 'dailyUpdates':
+      fields = ['Title','Details','Date'].map(f=>document.getElementById('du'+f).value); break;
+    case 'memo':
+      fields = ['Title','Details','Date'].map(f=>document.getElementById('m'+f).value); break;
+    case 'training':
+      fields = ['Subject','Details','Date'].map(f=>document.getElementById('t'+f).value); break;
+    case 'pni':
+      fields = ['Subject','Details','Date'].map(f=>document.getElementById('p'+f).value); break;
   }
-  if(!containerId) return;
-  const container = document.getElementById(containerId);
-  const countEl = document.getElementById(countId);
-  container.innerHTML = '';
-  if(data.length === 0) container.innerHTML = '<small>No entries</small>';
-  else {
-    data.slice(-5).forEach(row => {
-      const div = document.createElement('div');
-      div.className = 'row-entry';
-      div.innerHTML = `<div class="left">${Object.values(row).join(' | ')}</div>`;
-      container.appendChild(div);
-    });
-  }
-  if(countEl) countEl.innerText = data.length;
+  const url = `${SCRIPT_URL}?action=update_uid&sheet=${SHEET_MAP[section]}&uid=${uid}&row=${encodeURIComponent(JSON.stringify(fields))}&callback=callback`;
+  jsonp(url,res=>{
+    if(res.success){
+      fetchSheet(section,data=>renderPreview(section,data));
+      fields.forEach((f,i)=>{
+        const idMap = {vesselJoin:'vj',arrivingCrew:'ac',dailyUpdates:'du',memo:'m',training:'t',pni:'p'};
+        document.getElementById(idMap[section]+Object.keys(fields)[i]).value='';
+      });
+    } else alert('Error updating row');
+  });
 }
 
-// ================= AUTO-SYNC =================
-let syncInterval = null;
-function startAutoSync() {
-  if(syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(loadAllPreviews, 15000);
+// ----------------------- DELETE -----------------------
+function deleteRow(section, uid){
+  if(!confirm('Delete this entry? It will be archived.')) return;
+  const url = `${SCRIPT_URL}?action=delete_uid&sheet=${SHEET_MAP[section]}&uid=${uid}&callback=callback`;
+  jsonp(url,res=>{
+    if(res.success) fetchSheet(section,data=>renderPreview(section,data));
+    else alert('Error deleting row');
+  });
 }
 
-function manualSync() { loadAllPreviews(); }
-
-// ================= STICKY NOTE =================
-function saveSticky() {
-  const val = document.getElementById('stickyNote').value;
-  localStorage.setItem('stickyNote', val);
+// ----------------------- CHATBOARD -----------------------
+document.getElementById("chatSendBtn").addEventListener("click", sendChat);
+function sendChat() {
+  const name = document.getElementById("chatName").value.trim() || currentUser;
+  const msg = document.getElementById("chatMsg").value.trim();
+  if(!msg) return;
+  const row = JSON.stringify([name,msg,new Date().toISOString()]);
+  const url = `${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(row)}&callback=callback`;
+  jsonp(url,res=>{
+    if(res.success){
+      document.getElementById("chatMsg").value='';
+      fetchSheet('chatBoard',data=>renderPreview('chatBoard',data));
+    }
+  });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Load sticky note
-  const saved = localStorage.getItem('stickyNote');
-  if(saved) document.getElementById('stickyNote').value = saved;
+// ChatBoard notification
+function pollChatBoard(){
+  fetchSheet('chatBoard', data => {
+    renderPreview('chatBoard', data);
+    if(data.length>lastChatLength){
+      const newMsgs = data.slice(lastChatLength);
+      const others = newMsgs.filter(m=>m.Name!==currentUser);
+      if(others.length>0){
+        const audio=new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+        audio.play();
+        alert('New ChatBoard message from other user!');
+      }
+      lastChatLength=data.length;
+    }
+  });
+  setTimeout(pollChatBoard,5000);
+}
 
-  // Show login
-  showLogin();
-});
-</script>
+// ----------------------- NAVIGATION -----------------------
+function navTo(event,target){
+  event.preventDefault();
+  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
+  document.getElementById(target).style.display='block';
+  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+function navToElement(target){
+  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
+  document.getElementById(target).style.display='block';
+}
+
+// ----------------------- HELPER -----------------------
+function callback(res){ console.log('callback',res); }
