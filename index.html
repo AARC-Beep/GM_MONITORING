@@ -381,113 +381,173 @@
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Paste this after your Bootstrap script (or in a separate .js file) -->
+<script>
 /* ============================================================
-   SeaCrew Dashboard JS — Full Functionality + Edit/Delete
+   SeaCrew Dashboard — Full JS (wired to your Apps Script)
+   Deployed Apps Script JSONP URL included
 ===============================================================*/
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0g4xZHcDgS7UQqodhIuqI00PTEyePHjEEiqA2t7xVTptOIF1oLRCA02aQBwwRw5St/exec"; // replace with your deployed Apps Script URL
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0g4xZHcDgS7UQqodhIuqI00PTEyePHjEEiqA2t7xVTptOIF1oLRCA02aQBwwRw5St/exec";
 let currentUser = null;
 let autoSyncInterval = null;
 
 /* ---------------- JSONP HELPER ---------------- */
-function jsonpRequest(params) {
+function jsonpRequest(params, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const callbackName = "cb_" + Math.random().toString(36).substr(2,9);
-    params.callback = callbackName;
+    params = Object.assign({}, params, { callback: callbackName });
 
-    window[callbackName] = (data) => { delete window[callbackName]; script.remove(); resolve(data); };
-    
-    const query = Object.keys(params).map(k => encodeURIComponent(k) + "=" + encodeURIComponent(params[k])).join("&");
     const script = document.createElement("script");
+    const query = Object.keys(params)
+      .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+      .join("&");
     script.src = `${SCRIPT_URL}?${query}`;
-    script.onerror = () => { delete window[callbackName]; script.remove(); reject(new Error("JSONP failed")); };
+
+    let done = false;
+    const cleanup = () => {
+      if (window[callbackName]) delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    };
+
+    window[callbackName] = (data) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("JSONP script load error"));
+    };
+
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error("JSONP timeout"));
+    }, timeout);
+
     document.body.appendChild(script);
   });
 }
 
-/* ---------------- LOGIN / LOGOUT ---------------- */
-async function login() {
-  const username = document.getElementById("loginUser").value.trim();
-  const password = document.getElementById("loginPass").value.trim();
+/* ---------------- NAV (used by inline onclick in your HTML) ---------------- */
+function navTo(event, sectionId) {
+  if (event && event.preventDefault) event.preventDefault();
+  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  const sec = document.getElementById(sectionId);
+  if (sec) sec.style.display = "block";
+
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
+  // mark the sidebar link that has data-target == sectionId
+  const link = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
+  if (link) link.classList.add("active");
+}
+function navToElement(sectionId){
+  // helper for button "Open"
+  navTo(null, sectionId);
+}
+
+/* ---------------- LOGIN ---------------- */
+async function doLogin() {
+  const uEl = document.getElementById("loginUser");
+  const pEl = document.getElementById("loginPass");
   const msgEl = document.getElementById("loginMsg");
+  const u = uEl ? uEl.value.trim() : "";
+  const p = pEl ? pEl.value.trim() : "";
   msgEl.textContent = "";
 
-  if(!username || !password) { msgEl.textContent = "Enter username & password"; return; }
+  if (!u || !p) { msgEl.textContent = "Enter username & password"; return; }
 
   try {
-    const res = await jsonpRequest({ action: "auth", username, password });
-    if(res.success){
+    const res = await jsonpRequest({ action: "auth", username: u, password: p });
+    if (res && res.success) {
       currentUser = res;
       document.getElementById("loginOverlay").style.display = "none";
-      document.getElementById("logoutBtn").style.display = "inline-block";
+      const logoutBtn = document.getElementById("logoutBtn");
+      if (logoutBtn) logoutBtn.style.display = "inline-block";
       setupDashboard();
     } else {
-      msgEl.textContent = res.message || "Invalid credentials";
+      msgEl.textContent = (res && (res.message || res.error)) || "Invalid credentials";
     }
-  } catch(err) {
-    console.error(err);
-    msgEl.textContent = "Login error";
+  } catch (err) {
+    console.error("Login error", err);
+    msgEl.textContent = "Login error — check console";
   }
 }
 
-function logout() {
+/* ---------------- LOGOUT ---------------- */
+function logout(){
   currentUser = null;
   document.getElementById("loginOverlay").style.display = "flex";
-  document.getElementById("logoutBtn").style.display = "none";
-  if(autoSyncInterval) clearInterval(autoSyncInterval);
-}
-
-/* ---------------- NAVIGATION ---------------- */
-function navTo(event, sectionId){
-  event.preventDefault();
-  document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
-  document.getElementById(sectionId).style.display = "block";
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
-  event.currentTarget.classList.add("active");
-}
-function navToElement(sectionId){
-  document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
-  document.getElementById(sectionId).style.display = "block";
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
-  const a = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
-  if(a) a.classList.add("active");
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.style.display = "none";
+  if (autoSyncInterval) clearInterval(autoSyncInterval);
 }
 
 /* ---------------- DASHBOARD PREVIEWS ---------------- */
-async function loadSectionPreview(sheetName, previewDivId, countSpanId) {
-  const res = await jsonpRequest({ action:"fetch", sheet: sheetName });
-  const previewDiv = document.getElementById(previewDivId);
-  const countSpan = document.getElementById(countSpanId);
-  previewDiv.innerHTML = "";
-  if(res.success && res.data.length){
-    res.data.slice(-5).forEach(row => {
+async function loadSectionPreview(sheetName, previewDivId, countSpanId){
+  try {
+    const res = await jsonpRequest({ action: "fetch", sheet: sheetName });
+    const previewDiv = document.getElementById(previewDivId);
+    const countSpan = document.getElementById(countSpanId);
+    if (previewDiv) previewDiv.innerHTML = "";
+    if (!res || !res.success || !res.data || !res.data.length) {
+      if (countSpan) countSpan.textContent = "0";
+      return;
+    }
+    // show latest 5 entries
+    const items = res.data.slice(-5);
+    items.forEach(row => {
       const el = document.createElement("div");
-      el.textContent = Object.values(row).join(" | ");
-      previewDiv.appendChild(el);
+      // prefer readable format: join non-empty values
+      const vals = Object.values(row).filter(v => v !== undefined && v !== null && String(v).trim() !== "");
+      el.textContent = vals.join(" | ");
+      if (previewDiv) previewDiv.appendChild(el);
     });
-    countSpan.textContent = res.data.length;
-  } else countSpan.textContent = "0";
+    if (countSpan) countSpan.textContent = res.data.length;
+  } catch (err) {
+    console.error("Preview load error", sheetName, err);
+    const countSpan = document.getElementById(countSpanId);
+    if (countSpan) countSpan.textContent = "0";
+  }
 }
 
 async function loadDashboardData(){
-  loadSectionPreview("Vessel_Join","vesselPreviewSmall","countVessel");
-  loadSectionPreview("Arrivals","arrivalsPreviewSmall","countArrivals");
-  loadSectionPreview("Daily_Updates","updatesPreviewSmall","countUpdates");
-  loadSectionPreview("Memo","memoPreviewSmall","countMemo");
-  loadSectionPreview("Training","trainingPreviewSmall","countTraining");
-  loadSectionPreview("PNI","pniPreviewSmall","countPNI");
+  await Promise.all([
+    loadSectionPreview("Vessel_Join","vesselPreviewSmall","countVessel"),
+    loadSectionPreview("Arrivals","arrivalsPreviewSmall","countArrivals"),
+    loadSectionPreview("Daily_Updates","updatesPreviewSmall","countUpdates"),
+    loadSectionPreview("Memo","memoPreviewSmall","countMemo"),
+    loadSectionPreview("Training","trainingPreviewSmall","countTraining"),
+    loadSectionPreview("PNI","pniPreviewSmall","countPNI")
+  ]);
 }
 
-/* ---------------- SECTION RENDER + EDIT/DELETE ---------------- */
-async function renderSection(sheet, listDivId, formFields, resetForm) {
-  const res = await jsonpRequest({ action:"fetch", sheet });
-  const listDiv = document.getElementById(listDivId);
-  listDiv.innerHTML = "";
+/* ---------------- SECTION RENDER (list with edit/delete) ---------------- */
+async function renderSection(sheet, listDivId, formFields) {
+  try {
+    const res = await jsonpRequest({ action: "fetch", sheet });
+    const listDiv = document.getElementById(listDivId);
+    if (!listDiv) return;
+    listDiv.innerHTML = "";
 
-  if(res.success && res.data.length){
+    if (!res || !res.success || !res.data || !res.data.length) {
+      const empty = document.createElement("div");
+      empty.className = "small-note";
+      empty.textContent = "No entries";
+      listDiv.appendChild(empty);
+      return;
+    }
+
     res.data.forEach(row => {
-      const div = document.createElement("div");
-      div.className = "row-entry";
+      const entry = document.createElement("div");
+      entry.className = "row-entry";
 
       const left = document.createElement("div");
       left.className = "left";
@@ -496,143 +556,272 @@ async function renderSection(sheet, listDivId, formFields, resetForm) {
       const right = document.createElement("div");
       right.className = "right";
 
-      // Edit button
       const editBtn = document.createElement("button");
       editBtn.className = "btn btn-sm btn-outline-primary";
       editBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+      editBtn.title = "Edit";
       editBtn.addEventListener("click", () => {
-        let i=0; 
-        for(const id of formFields) document.getElementById(id).value = Object.values(row)[i++] || "";
-        // Store UID for update
+        // populate the form fields by index order
+        const vals = Object.values(row);
+        for (let i = 0; i < formFields.length; i++){
+          const id = formFields[i];
+          const el = document.getElementById(id);
+          if (el) el.value = vals[i+0] !== undefined ? vals[i+0] : ""; // assuming UID may be first column; forms usually exclude UID
+        }
+        // store editing context
         window.currentEditUID = row.UID;
         window.currentEditSheet = sheet;
+        // navigate to the section if not visible
+        navToElement(listDiv.closest(".section").id);
+        // focus first input
+        const first = document.getElementById(formFields[0]);
+        if (first) first.focus();
       });
 
-      // Delete button
       const delBtn = document.createElement("button");
       delBtn.className = "btn btn-sm btn-outline-danger";
       delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      delBtn.title = "Delete";
       delBtn.addEventListener("click", async () => {
-        if(confirm("Delete this entry?")){
-          await jsonpRequest({ action:"delete_uid", sheet, uid: row.UID });
-          renderSection(sheet,listDivId,formFields,resetForm);
-          loadDashboardData();
+        if (!confirm("Delete this entry? (it will be archived)")) return;
+        try {
+          const dres = await jsonpRequest({ action: "delete_uid", sheet, uid: row.UID });
+          if (dres && dres.success) {
+            await renderSection(sheet, listDivId, formFields);
+            await loadDashboardData();
+          } else {
+            alert("Delete failed: " + (dres && (dres.error || dres.message) ? (dres.error || dres.message) : "unknown"));
+          }
+        } catch (err) {
+          console.error("delete error", err);
+          alert("Delete failed (check console)");
         }
       });
 
       right.appendChild(editBtn);
       right.appendChild(delBtn);
 
-      div.appendChild(left);
-      div.appendChild(right);
-      listDiv.appendChild(div);
+      entry.appendChild(left);
+      entry.appendChild(right);
+      listDiv.appendChild(entry);
     });
+
+  } catch (err) {
+    console.error("renderSection error", sheet, err);
   }
 }
 
-/* ---------------- SECTION ADD/UPDATE BUTTONS ---------------- */
-function setupSectionButtons(sheet, addBtnId, resetBtnId, formFields, listDivId){
+/* ---------------- SECTION CRUD BUTTONS ---------------- */
+function setupSectionButtons(sheet, addBtnId, resetBtnId, formFields, listDivId) {
   const addBtn = document.getElementById(addBtnId);
   const resetBtn = document.getElementById(resetBtnId);
 
-  addBtn.addEventListener("click", async () => {
-    const values = formFields.map(id=>document.getElementById(id).value);
-    if(window.currentEditUID && window.currentEditSheet === sheet){
-      // update
-      await jsonpRequest({ action:"update_uid", sheet, uid: window.currentEditUID, row: JSON.stringify(values) });
-      window.currentEditUID = null;
-      window.currentEditSheet = null;
-    } else {
-      await jsonpRequest({ action:"append_uid", sheet, row: JSON.stringify(values) });
-    }
-    resetForm();
-    renderSection(sheet,listDivId,formFields,resetForm);
-    loadDashboardData();
-  });
+  const resetForm = () => {
+    formFields.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
+    window.currentEditUID = null;
+    window.currentEditSheet = null;
+  };
 
-  resetBtn.addEventListener("click", resetForm);
+  if (addBtn) {
+    addBtn.addEventListener("click", async () => {
+      // collect values in the same order as the formFields array
+      const values = formFields.map(id => {
+        const el = document.getElementById(id);
+        return el ? el.value : "";
+      });
+
+      try {
+        if (window.currentEditUID && window.currentEditSheet === sheet) {
+          // update
+          const res = await jsonpRequest({ action: "update_uid", sheet, uid: window.currentEditUID, row: JSON.stringify(values) });
+          if (!res || !res.success) alert("Update failed: " + (res && (res.error || res.message) || "unknown"));
+          window.currentEditUID = null;
+          window.currentEditSheet = null;
+        } else {
+          // append
+          const res = await jsonpRequest({ action: "append_uid", sheet, row: JSON.stringify(values) });
+          if (!res || !res.success) alert("Add failed: " + (res && (res.error || res.message) || "unknown"));
+        }
+        resetForm();
+        await renderSection(sheet, listDivId, formFields);
+        await loadDashboardData();
+      } catch (err) {
+        console.error("save error", err);
+        alert("Save failed (check console)");
+      }
+    });
+  }
+
+  if (resetBtn) resetBtn.addEventListener("click", resetForm);
 }
 
-/* ---------------- RESET FORM HELPERS ---------------- */
-function makeResetForm(ids){ return ()=>{ ids.forEach(id=>document.getElementById(id).value=""); window.currentEditUID=null; window.currentEditSheet=null; } }
-
 /* ---------------- CHATBOARD ---------------- */
-async function loadChatBoard() {
-  const res = await jsonpRequest({ action:"fetch", sheet:"ChatBoard" });
-  const logEl = document.getElementById("chatLog");
-  logEl.innerHTML = "";
-  if(res.success && res.data.length){
-    res.data.slice(-20).forEach(r => {
-      const div = document.createElement("div");
-      div.textContent = `[${r.Date}] ${r.Name}: ${r.Message}`;
-      logEl.appendChild(div);
-    });
-    logEl.scrollTop = logEl.scrollHeight;
+async function loadChatBoard(){
+  try {
+    const res = await jsonpRequest({ action: "fetch", sheet: "ChatBoard" });
+    const logEl = document.getElementById("chatLog");
+    if (!logEl) return;
+    logEl.innerHTML = "";
+    if (res && res.success && res.data.length) {
+      const rows = res.data.slice(-50); // last 50
+      rows.forEach(r => {
+        const div = document.createElement("div");
+        div.textContent = `[${r.Date}] ${r.Name}: ${r.Message}`;
+        logEl.appendChild(div);
+      });
+      logEl.scrollTop = logEl.scrollHeight;
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "small-note";
+      empty.textContent = "No messages";
+      logEl.appendChild(empty);
+    }
+  } catch (err) {
+    console.error("chat load failed", err);
   }
 }
 
 /* ---------------- STICKY NOTES ---------------- */
 function saveSticky(){
-  const val = document.getElementById("stickyNote").value;
-  localStorage.setItem("stickyNote", val);
+  const v = document.getElementById("stickyNote").value;
+  localStorage.setItem("stickyNote", v);
 }
 function loadSticky(){
-  const val = localStorage.getItem("stickyNote");
-  if(val) document.getElementById("stickyNote").value = val;
+  const v = localStorage.getItem("stickyNote");
+  if (v !== null) document.getElementById("stickyNote").value = v;
 }
 
 /* ---------------- MANUAL SYNC ---------------- */
-function manualSync(){
-  loadDashboardData();
-  loadChatBoard();
+async function manualSync(){
+  await loadDashboardData();
+  await loadChatBoard();
   loadSticky();
-  document.getElementById("lastSync").textContent = new Date().toLocaleTimeString();
+  const el = document.getElementById("lastSync");
+  if (el) el.textContent = new Date().toLocaleTimeString();
 }
 
 /* ---------------- AUTO SYNC ---------------- */
 function startAutoSync(){
-  if(autoSyncInterval) clearInterval(autoSyncInterval);
-  autoSyncInterval = setInterval(manualSync,15000);
+  if (autoSyncInterval) clearInterval(autoSyncInterval);
+  autoSyncInterval = setInterval(manualSync, 15000);
 }
 
-/* ---------------- INITIAL DASHBOARD SETUP ---------------- */
+/* ---------------- PDF EXPORT (simple) ---------------- */
+function printSectionPDF(sectionId, filename = "report", landscape = true) {
+  try {
+    const sec = document.getElementById(sectionId);
+    if (!sec) { alert("Section not found"); return; }
+
+    // collect text content of the section
+    const text = sec.innerText || sec.textContent;
+    // simple PDF generation using jsPDF (already included in your HTML)
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a4" });
+    const lines = doc.splitTextToSize(text, doc.internal.pageSize.getWidth() - 40);
+    doc.setFontSize(10);
+    doc.text(lines, 20, 30);
+    doc.save(filename + ".pdf");
+  } catch (err) {
+    console.error("printSectionPDF error", err);
+    alert("PDF export failed (check console)");
+  }
+}
+
+/* ---------------- SETUP DASHBOARD (all sections) ---------------- */
 function setupDashboard(){
+  // load previews and chat and sticky and UI
   loadDashboardData();
   loadChatBoard();
   loadSticky();
 
-  // Setup each section with add/update/reset + edit/delete
+  // set logout button visible
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.style.display = "inline-block";
+
+  // Setup all sections with forms, add/update/delete
   const sections = [
-    {sheet:"Vessel_Join", list:"vj_list", form:["vjVessel","vjPort","vjNo","vjRank","vjDate","vjFlight"], add:"vjAddBtn", reset:"vjResetBtn"},
-    {sheet:"Arrivals", list:"ac_list", form:["acVessel","acPort","acNo","acRank","acDate","acFlight"], add:"acAddBtn", reset:"acResetBtn"},
-    {sheet:"Daily_Updates", list:"du_list", form:["duTitle","duDetails","duDate"], add:"duAddBtn", reset:"duResetBtn"},
-    {sheet:"Memo", list:"m_list", form:["mTitle","mDetails","mDate"], add:"mAddBtn", reset:"mResetBtn"},
-    {sheet:"Training", list:"t_list", form:["tSubject","tDetails","tDate"], add:"tAddBtn", reset:"tResetBtn"},
-    {sheet:"PNI", list:"p_list", form:["pSubject","pDetails","pDate"], add:"pAddBtn", reset:"pResetBtn"}
+    { sheet: "Vessel_Join", list: "vj_list", form: ["vjVessel","vjPort","vjNo","vjRank","vjDate","vjFlight"], add: "vjAddBtn", reset: "vjResetBtn" },
+    { sheet: "Arrivals", list: "ac_list", form: ["acVessel","acPort","acNo","acRank","acDate","acFlight"], add: "acAddBtn", reset: "acResetBtn" },
+    { sheet: "Daily_Updates", list: "du_list", form: ["duTitle","duDetails","duDate"], add: "duAddBtn", reset: "duResetBtn" },
+    { sheet: "Memo", list: "m_list", form: ["mTitle","mDetails","mDate"], add: "mAddBtn", reset: "mResetBtn" },
+    { sheet: "Training", list: "t_list", form: ["tSubject","tDetails","tDate"], add: "tAddBtn", reset: "tResetBtn" },
+    { sheet: "PNI", list: "p_list", form: ["pSubject","pDetails","pDate"], add: "pAddBtn", reset: "pResetBtn" }
   ];
-  sections.forEach(s=>{
-    const resetForm = makeResetForm(s.form);
-    setupSectionButtons(s.sheet,s.add,s.reset,s.form,s.list);
-    renderSection(s.sheet,s.list,s.form,resetForm);
+
+  sections.forEach(s => {
+    setupSectionButtons(s.sheet, s.add, s.reset, s.form, s.list);
+    renderSection(s.sheet, s.list, s.form);
   });
 
-  // Chatboard send
-  document.getElementById("chatSendBtn").addEventListener("click", async () => {
-    const name = document.getElementById("chatName").value.trim();
-    const msg = document.getElementById("chatMsg").value.trim();
-    if(!msg) return;
-    const row = { Name: name, Message: msg, Date: new Date().toLocaleString() };
-    await jsonpRequest({ action:"append_uid", sheet:"ChatBoard", row: JSON.stringify(Object.values(row)) });
-    document.getElementById("chatMsg").value = "";
-    loadChatBoard();
-  });
+  // chat send
+  const chatSend = document.getElementById("chatSendBtn");
+  if (chatSend) {
+    chatSend.addEventListener("click", async () => {
+      const name = document.getElementById("chatName").value.trim() || "Anonymous";
+      const msg = document.getElementById("chatMsg").value.trim();
+      if (!msg) return;
+      const row = [name, msg, new Date().toLocaleString()];
+      try {
+        await jsonpRequest({ action: "append_uid", sheet: "ChatBoard", row: JSON.stringify(row) });
+        document.getElementById("chatMsg").value = "";
+        await loadChatBoard();
+      } catch (err) { console.error("chat send error", err); alert("Failed to send"); }
+    });
+  }
+
+  // manual sync button
+  const syncBtn = document.querySelector("button[onclick='manualSync()']");
+  if (syncBtn) syncBtn.addEventListener("click", manualSync);
+
+  // clear local button
+  const clearLocalBtn = document.querySelector("button[onclick='clearAllLocal()']");
+  if (clearLocalBtn) {
+    clearLocalBtn.addEventListener("click", () => {
+      if (confirm("Clear all local storage items (sticky note)?")) {
+        localStorage.removeItem("stickyNote");
+        alert("Local cleared");
+      }
+    });
+  }
 
   startAutoSync();
 }
 
-/* ---------------- EVENT LISTENERS ---------------- */
-document.getElementById("loginBtn").addEventListener("click", login);
-document.getElementById("logoutBtn").addEventListener("click", logout);
-window.addEventListener("load", ()=>{
-  document.getElementById("loginOverlay").style.display = "flex";
+/* ---------------- UTIL: clearSection (used by your HTML) ---------------- */
+function clearSection(sectionId){
+  if(!confirm("Clear local entries for this section?")) return;
+  // we only store sticky locally; if there are other local caches implement here
+  alert("Cleared (no local cache implemented for sections). Use delete to remove sheet rows.");
+}
+
+/* ---------------- UTIL: clearAllLocal (used by your HTML) ---------------- */
+function clearAllLocal(){
+  if(!confirm("Clear all local storage?")) return;
+  localStorage.clear();
+  alert("All local storage cleared.");
+}
+
+/* ---------------- BOOT / EVENT BINDINGS ---------------- */
+window.addEventListener("DOMContentLoaded", () => {
+  // attach login button
+  const loginBtn = document.getElementById("loginBtn");
+  if (loginBtn) loginBtn.addEventListener("click", doLogin);
+
+  // attach logout
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+  // show login overlay
+  const loginOverlay = document.getElementById("loginOverlay");
+  if (loginOverlay) loginOverlay.style.display = "flex";
+
+  // attach print buttons (buttons call printSectionPDF inline; function exists)
+  // attach manual sync and clearAllLocal if necessary (we wired them in setupDashboard too)
+
+  // load sticky content if any
+  loadSticky();
 });
+</script>
