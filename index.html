@@ -1,109 +1,55 @@
-<!-- ======= SeaCrew Dashboard — FULL HTML (Part 1 of 3) ======= -->
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SeaCrew Dashboard — Daily Routine Log</title>
-
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <!-- jsPDF + AutoTable (we will use in Part 3 JS) -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeaCrew Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-Xx8Bf4+Cx5+k7OOkGzFjT8kQoz6U0mI+oB6O+Bb3qSgHRqbt+z25Q7czD+3YB2+h3PzI0qPPyUqMQdZbw5vTQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    :root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
-    html,body { height:100%; }
-    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
-    /* Sidebar */
-    .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
-    .sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
-    .sidebar a { display:block; color:#cfe8ff; padding:10px 12px; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:500; }
-    .sidebar a:hover { background: rgba(255,255,255,0.05); color:#fff; text-decoration:none; }
-    .sidebar a.active { background:#072033; color:#fff; }
-    .sidebar .small-note { font-size:0.85rem; color:#cfe8ff; margin-top:8px; margin-bottom:6px; }
-
-    /* Content */
-    .content { margin-left: calc(var(--sidebar-width) + 28px); padding:24px; min-height:100vh; }
-    .card-slim { padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(9,30,66,0.06); background:#fff; margin-bottom:16px; }
-    .small-note { font-size:0.9rem; color:#666; }
-    .preview-table { max-height:200px; overflow:auto; padding:8px; background:#fafbff; border-radius:8px; border:1px solid #eef3fb;}
-    .entry-card { border:1px solid #e9eef6; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:#fff; }
-    .entry-meta { color:#444; font-size:0.95rem; }
-    .form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .form-row .form-control { min-width:140px; }
-    .entry-actions button { margin-left:6px; }
-    .fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
-
-    /* layout for list rows */
-    .row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
-    .row-entry .left { flex:1; }
-    .row-entry .right { display:flex; gap:8px; align-items:center; }
-
-    /* Chatboard */
-    .chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
-    .chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
-    .chat-inputs { display:flex; gap:8px; align-items:center; }
-
-    /* responsive */
-    @media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
-    @media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
-
-    /* some small helpers */
-    .btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
-    .badge-synced { font-size:0.75rem; color:#0b6; margin-left:6px; }
-    .login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; }
-    .login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
-
-    /* helpers for header buttons */
-    .top-actions .btn { min-width:110px; }
-
-    /* small table adjustments */
-    table.table-sm td, table.table-sm th { padding:.45rem .6rem; }
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f4f6f8; }
+    .login-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:#1e2a38; display:flex; align-items:center; justify-content:center; color:#fff; z-index:9999; }
+    .login-box { background:#2c3e50; padding:30px; border-radius:8px; width:300px; box-shadow:0 4px 15px rgba(0,0,0,0.3); }
+    .login-box input { width:100%; padding:10px; margin:8px 0; border:none; border-radius:4px; }
+    .login-box button { width:100%; padding:10px; margin-top:10px; border:none; border-radius:4px; background:#3498db; color:#fff; cursor:pointer; }
+    .login-box button:hover { background:#2980b9; }
+    .small-note { font-size:12px; color:#aaa; }
+    .sidebar { width:250px; background:#1e2a38; height:100vh; position:fixed; top:0; left:0; padding:20px; color:#fff; overflow-y:auto; }
+    .sidebar a { display:block; color:#cfe8ff; padding:8px 0; text-decoration:none; }
+    .sidebar a:hover { color:#fff; }
+    .sidebar .section-title { font-size:14px; margin-top:20px; color:#a0c4ff; }
+    .content { margin-left:270px; padding:20px; }
   </style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
-<div id="loginOverlay" class="login-overlay" style="display:none">
-  <div class="login-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 style="margin:0">TIWALA — SeaCrew Login</h5>
-      <img src="" alt="" style="width:36px;opacity:.4"/>
-    </div>
-    <div>
-      <div class="mb-2"><input id="loginUser" class="form-control" placeholder="Username"></div>
-      <div class="mb-2"><input id="loginPass" type="password" class="form-control" placeholder="Password"></div>
-      <div class="d-flex justify-content-between align-items-center">
-        <div><input type="checkbox" id="saveCred"> <label for="saveCred">Remember (local only)</label></div>
-        <div><button id="loginBtn" class="btn btn-primary">Sign in</button></div>
-      </div>
-      <div class="mt-2 small-note" id="loginMsg"></div>
-    </div>
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h3 style="margin:0 0 10px 0; text-align:center;">TIWALA — SeaCrew Dashboard</h3>
+    <small class="small-note" style="display:block; text-align:center; margin-bottom:15px;">Please sign in to continue</small>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <input type="text" id="role" placeholder="Role">
+    <button id="loginBtn">Sign In</button>
+    <div id="loginMsg" class="small-note" style="color:#ff6b6b; margin-top:5px;"></div>
   </div>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar" aria-label="Main navigation">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY ROUTINE LOG</h4>
-
-  <a href="#" class="active" data-target="dashboard" onclick="navTo(event,'dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-  <a href="#" data-target="vesselJoin" onclick="navTo(event,'vesselJoin')"><i class="fa-solid fa-ship"></i> Vessel Crew Joining</a>
-  <a href="#" data-target="arrivingCrew" onclick="navTo(event,'arrivingCrew')"><i class="fa-solid fa-plane-departure"></i> Arriving Crew</a>
-  <a href="#" data-target="dailyUpdates" onclick="navTo(event,'dailyUpdates')"><i class="fa-regular fa-calendar-days"></i> Daily Updates</a>
-  <a href="#" data-target="memo" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
-  <a href="#" data-target="training" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
-  <a href="#" data-target="pni" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&amp;I / Events</a>
-  <a href="#" data-target="helpSection" onclick="navTo(event,'helpSection')"><i class="fa-solid fa-circle-info"></i> Help / User Guide</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="section-title">Navigation</div>
+  <a href="#" data-sheet="Vessel_join"><i class="fa-solid fa-ship"></i> Vessel Join</a>
+  <a href="#" data-sheet="Arrivals"><i class="fa-solid fa-plane-arrival"></i> Arrivals</a>
+  <a href="#" data-sheet="Updates"><i class="fa-solid fa-file-lines"></i> Updates</a>
+  <a href="#" data-sheet="Memo"><i class="fa-solid fa-sticky-note"></i> Memo</a>
+  <a href="#" data-sheet="Training"><i class="fa-solid fa-graduation-cap"></i> Training</a>
+  <a href="#" data-sheet="Pni"><i class="fa-solid fa-id-card"></i> PNI</a>
+  <a href="#" data-sheet="ChatBoard"><i class="fa-solid fa-comments"></i> ChatBoard</a>
+  <a href="#" data-sheet="Users"><i class="fa-solid fa-users"></i> Users</a>
 
   <!-- External links requested -->
-  <div style="margin-top:6px">
-    <div class="small-note" style="color:#cfe8ff;margin-bottom:6px">Useful Tools</div>
+  <div style="margin-top:20px;">
+    <div class="small-note" style="color:#cfe8ff; margin-bottom:6px;">Useful Tools</div>
     <a href="https://flightaware.com/live/airport/RPLL" target="_blank" rel="noopener"><i class="fa-solid fa-plane"></i> Flights — FlightAware (MNL)</a>
     <a href="https://www.msn.com/en-ph/news" target="_blank" rel="noopener"><i class="fa-solid fa-newspaper"></i> News — MSN Philippines</a>
     <a href="https://zoom.earth/" target="_blank" rel="noopener"><i class="fa-solid fa-cloud-sun"></i> Weather — Zoom Earth</a>
@@ -111,1545 +57,217 @@
     <a href="https://owwa.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> OWWA</a>
     <a href="https://marina.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-anchor"></i> MARINA</a>
   </div>
+</div>
 
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-  <div class="small-note">Tip: Dashboard auto-syncs every 15s. If offline, entries save locally and will sync when online.</div>
-</nav>
+<!-- MAIN CONTENT -->
+<div class="content" id="mainContent">
+  <h2>Welcome to SeaCrew Dashboard</h2>
+  <p>Select a module from the sidebar to view data.</p>
+</div>
+<!-- ==================== DASHBOARD TABLES & CONTENT ==================== -->
 
-<!-- Main content start (Part 1 ends after opening) -->
-<main class="content" role="main">
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h2 style="margin:0">SeaCrew Dashboard</h2>
-      <div class="small-note">Connected to Google Apps Script web app: <strong>DAILY ROUTINE LOG</strong></div>
-    </div>
+<!-- Vessel Join Table -->
+<div id="Vessel_join" class="sheet-content" style="display:none;">
+  <h3>Vessel Join Records</h3>
+  <button onclick="showAddModal('Vessel_join')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Vessel_join">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Vessel Name</th>
+        <th>Rank</th>
+        <th>Joining Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-    <div class="d-flex gap-2 top-actions">
-      <button class="btn btn-outline-secondary" onclick="manualSync()"><i class="fa-solid fa-arrows-rotate"></i> Sync now</button>
-      <button class="btn btn-outline-danger" onclick="clearAllLocal()"><i class="fa-solid fa-trash-can"></i> Clear local</button>
-      <button class="btn btn-primary" onclick="printSectionPDF('dashboard','SeaCrew_Monthly_Report',true)"><i class="fa-solid fa-file-pdf"></i> Monthly PDF</button>
-      <button class="btn btn-outline-info" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
-    </div>
+<!-- Arrivals Table -->
+<div id="Arrivals" class="sheet-content" style="display:none;">
+  <h3>Arrivals Records</h3>
+  <button onclick="showAddModal('Arrivals')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Arrivals">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Name</th>
+        <th>Vessel</th>
+        <th>Arrival Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Updates Table -->
+<div id="Updates" class="sheet-content" style="display:none;">
+  <h3>Updates Records</h3>
+  <button onclick="showAddModal('Updates')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Updates">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Title</th>
+        <th>Description</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Memo Table -->
+<div id="Memo" class="sheet-content" style="display:none;">
+  <h3>Memo Records</h3>
+  <button onclick="showAddModal('Memo')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Memo">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Subject</th>
+        <th>Content</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Training Table -->
+<div id="Training" class="sheet-content" style="display:none;">
+  <h3>Training Records</h3>
+  <button onclick="showAddModal('Training')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Training">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Name</th>
+        <th>Course</th>
+        <th>Date Completed</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- PNI Table -->
+<div id="Pni" class="sheet-content" style="display:none;">
+  <h3>PNI Records</h3>
+  <button onclick="showAddModal('Pni')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Pni">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Name</th>
+        <th>ID Number</th>
+        <th>Expiry Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- ChatBoard Table -->
+<div id="ChatBoard" class="sheet-content" style="display:none;">
+  <h3>ChatBoard</h3>
+  <div id="chatContainer" style="border:1px solid #ccc; padding:10px; height:300px; overflow-y:auto; background:#fff;"></div>
+  <input type="text" id="chatMessage" placeholder="Type a message..." style="width:80%;">
+  <button onclick="sendChatMessage()">Send</button>
+</div>
+
+<!-- Users Table -->
+<div id="Users" class="sheet-content" style="display:none;">
+  <h3>Users</h3>
+  <button onclick="showAddModal('Users')">Add New</button>
+  <table border="1" cellpadding="5" cellspacing="0" width="100%" id="table_Users">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- ==================== ADD/UPDATE MODAL ==================== -->
+<div id="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-height:80%; overflow-y:auto;">
+    <h3 id="modalTitle">Add Record</h3>
+    <div id="modalFields"></div>
+    <button onclick="submitModal()">Submit</button>
+    <button onclick="closeModal()">Cancel</button>
   </div>
+</div>
+<!-- ==================== FOOTER & STATUS ==================== -->
+<div id="statusBar" style="position:fixed; bottom:0; left:0; width:100%; background:#222; color:#cfe8ff; padding:5px; font-size:12px; text-align:center;">
+  SeaCrew Dashboard — Status: <span id="statusText">Initializing...</span>
+</div>
 
-  <!-- DASHBOARD section and other sections will be included in Part 2 -->
-  <!-- ====================== PART 2 — MAIN CONTENT SECTIONS ====================== -->
+<!-- ==================== MODAL FOR CONFIRMATION ==================== -->
+<div id="confirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:20px; border-radius:8px; width:300px; text-align:center;">
+    <p id="confirmMessage">Are you sure?</p>
+    <button onclick="confirmYes()">Yes</button>
+    <button onclick="confirmNo()">No</button>
+  </div>
+</div>
 
-  <!-- DASHBOARD (previews + chatboard) -->
-  <section id="dashboard" class="section active">
-    <div class="row g-3">
-      <!-- Previews columns -->
-      <div class="col-md-8">
-        <div class="card-slim">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 style="margin:0">Quick Overview</h5>
-            <div><small class="small-note">Last sync: <span id="lastSync">—</span></small></div>
-          </div>
-
-          <div class="row g-3 mt-3">
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Vessel Joining <small class="small-note">(<span id="countVessel">0</span>)</small></h6>
-                <div class="preview-table" id="vesselPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('vesselJoin')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Arrivals <small class="small-note">(<span id="countArrivals">0</span>)</small></h6>
-                <div class="preview-table" id="arrivalsPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('arrivingCrew')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Updates <small class="small-note">(<span id="countUpdates">0</span>)</small></h6>
-                <div class="preview-table" id="updatesPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('dailyUpdates')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Memo <small class="small-note">(<span id="countMemo">0</span>)</small></h6>
-                <div class="preview-table" id="memoPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('memo')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Training <small class="small-note">(<span id="countTraining">0</span>)</small></h6>
-                <div class="preview-table" id="trainingPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('training')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>P&amp;I <small class="small-note">(<span id="countPNI">0</span>)</small></h6>
-                <div class="preview-table" id="pniPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('pni')">Open</button></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatboard / Sticky -->
-      <div class="col-md-4">
-        <div class="card-slim">
-          <h6>ChatBoard (public view)</h6>
-          <div class="chatboard">
-            <div class="chat-log" id="chatLog"></div>
-            <div class="chat-inputs">
-              <input id="chatName" class="form-control" placeholder="Your name (visible)" value="Captain" />
-              <input id="chatMsg" class="form-control" placeholder="Message" />
-              <button class="btn btn-primary" id="chatSendBtn">Send</button>
-            </div>
-            <small class="small-note">Only messages posted here are saved to the ChatBoard sheet.</small>
-          </div>
-        </div>
-
-        <div class="card-slim mt-3">
-          <h6>Sticky / Quick Note</h6>
-          <textarea id="stickyNote" class="form-control" rows="6" placeholder="Quick note — saved locally only"></textarea>
-          <div class="d-flex justify-content-end mt-2">
-            <button class="btn btn-outline-secondary me-2" onclick="localStorage.removeItem('stickyNote'); document.getElementById('stickyNote').value='';">Clear</button>
-            <button class="btn btn-primary" onclick="saveSticky()">Save</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- Sections: Vessel Join / Arrivals / Updates / Memo / Training / PNI ---------- -->
-  <!-- Vessel Join -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Vessel Crew Joining</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="vjVessel">
-        <input class="form-control" placeholder="Port" id="vjPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
-        <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
-        <input class="form-control" placeholder="Flight" id="vjFlight">
-        <button class="btn btn-success" id="vjAddBtn">Add</button>
-        <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="vj_list" class="card-slim"></div>
-  </section>
-
-  <!-- Arriving Crew -->
-  <section id="arrivingCrew" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Arriving Crew</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('arrivingCrew','Arrivals')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('arrivingCrew')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="acVessel">
-        <input class="form-control" placeholder="Port" id="acPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="acNo">
-        <input class="form-control" placeholder="Rank" id="acRank">
-        <input class="form-control" placeholder="Arrival Date" type="date" id="acDate">
-        <input class="form-control" placeholder="Flight" id="acFlight">
-        <button class="btn btn-success" id="acAddBtn">Add</button>
-        <button class="btn btn-secondary" id="acResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="ac_list" class="card-slim"></div>
-  </section>
-
-  <!-- Daily Updates -->
-  <section id="dailyUpdates" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Daily Updates</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('dailyUpdates','Daily_Updates')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('dailyUpdates')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="duTitle">
-        <input class="form-control" placeholder="Details" id="duDetails">
-        <input class="form-control" type="date" id="duDate">
-        <button class="btn btn-success" id="duAddBtn">Add</button>
-        <button class="btn btn-secondary" id="duResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="du_list" class="card-slim"></div>
-  </section>
-
-  <!-- Memo -->
-  <section id="memo" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Memo</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('memo','Memo')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('memo')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="mTitle">
-        <input class="form-control" placeholder="Details" id="mDetails">
-        <input class="form-control" type="date" id="mDate">
-        <button class="btn btn-success" id="mAddBtn">Add</button>
-        <button class="btn btn-secondary" id="mResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="m_list" class="card-slim"></div>
-  </section>
-
-  <!-- Training -->
-  <section id="training" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Training</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('training','Training')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('training')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="tSubject">
-        <input class="form-control" placeholder="Details" id="tDetails">
-        <input class="form-control" type="date" id="tDate">
-        <button class="btn btn-success" id="tAddBtn">Add</button>
-        <button class="btn btn-secondary" id="tResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="t_list" class="card-slim"></div>
-  </section>
-
-  <!-- PnI -->
-  <section id="pni" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>P&amp;I / Events</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="pSubject">
-        <input class="form-control" placeholder="Details" id="pDetails">
-        <input class="form-control" type="date" id="pDate">
-        <button class="btn btn-success" id="pAddBtn">Add</button>
-        <button class="btn btn-secondary" id="pResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="p_list" class="card-slim"></div>
-  </section>
-
-  <!-- HELP / USER GUIDE -->
-  <section id="helpSection" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>User Guide / Help</h4>
-      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('helpSection','User_Guide')">Export PDF</button>
-    </div>
-
-    <div class="card-slim" style="font-size:14px; line-height:1.5">
-      <h5>SeaCrew Dashboard — Daily Routine Log (User Guide)</h5>
-      <ol>
-        <li>Login using your Username and Password (from Users sheet).</li>
-        <li>Use the sidebar to navigate sections. Add entries in the form at the top of each section.</li>
-        <li>To edit an entry, click the edit (pencil) icon — the form will populate. Update then press "Update".</li>
-        <li>To delete an entry, click the trash icon and confirm. Deleted entries are removed from the sheet (or archived if enabled).</li>
-        <li>ChatBoard posts a message to the ChatBoard sheet (sound and visual alert when new messages arrive).</li>
-        <li>Press "Sync now" to manually sync. Auto-sync occurs every 15 seconds.</li>
-        <li>Monthly PDF generates consolidated report (landscape, font-size 8) and includes a GM signature page.</li>
-      </ol>
-      <p class="small-note">If you want deletions to be archived (not permanently removed), ask me and I'll implement an "Archive" sheet behavior instead of deleting rows.</p>
-    </div>
-  </section>
-
-  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
-</main>
-
-<!-- PART 2 ends here. Part 3 (full JavaScript, event wiring, JSONP calls) will follow. -->
-<!-- ======= PART 3A: JS (Globals, Navigation, Login, Local helpers, JSONP + basic server) ======= -->
+<!-- ==================== INITIALIZATION SCRIPT ==================== -->
 <script>
-/* =========================
-   CONFIG
-   Replace SCRIPT_URL below if you have a different web app URL.
-   ========================= */
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0g4xZHcDgS7UQqodhIuqI00PTEyePHjEEiqA2t7xVTptOIF1oLRCA02aQBwwRw5St/exec";
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log("SeaCrew Dashboard initializing...");
+    setStatus("Loading sheets...");
+    
+    // Populate sidebar, login, and initialize first sheet
+    initializeSidebar();
+    initializeLogin();
 
-/* Section mapping (localStorage key, sheet name) */
-const SECTIONS = {
-  vj: { key:'vesselJoin', sheet:'Vessel_Join' },
-  ac: { key:'arrivingCrew', sheet:'Arrivals' },
-  du: { key:'dailyUpdates', sheet:'Updates' },
-  memo: { key:'memo', sheet:'Memo' },
-  tr: { key:'training', sheet:'Training' },
-  pni:{ key:'pni', sheet:'Pni' },
-  chat:{ key:'chatboard', sheet:'ChatBoard' }
-};
-
-/* ---------- local storage helpers ---------- */
-function saveLocal(key, arr){ try{ localStorage.setItem(key, JSON.stringify(arr || [])); }catch(e){ console.warn('saveLocal failed',e); } }
-function loadLocal(key){ try{ return JSON.parse(localStorage.getItem(key) || "[]"); } catch(e){ return []; } }
-
-/* ---------- utility ---------- */
-function fmtDate(d){ if(!d) return ""; const dt=new Date(d); if(isNaN(dt)) return d; return dt.toLocaleDateString(); }
-function escapeHtml(unsafe){ if(!unsafe && unsafe !== 0) return ''; return String(unsafe).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;"); }
-function makeUID(){ return 'UID-' + Date.now() + '-' + Math.floor(Math.random()*1000000); }
-
-/* ---------- Navigation ---------- */
-function navTo(e, id){
-  e && e.preventDefault();
-  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
-  const el = document.getElementById(id);
-  if(el) el.style.display='block';
-  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
-  const link = Array.from(document.querySelectorAll('.sidebar a')).find(a=>a.dataset.target===id);
-  if(link) link.classList.add('active');
-}
-function navToElement(id){ navTo(null,id); window.scrollTo({top:0,behavior:'smooth'}); }
-
-/* ---------- edit state (placeholder for later use) ---------- */
-const editState = { vj:null, ac:null, du:null, memo:null, tr:null, pni:null };
-
-/* =========================
-   JSONP helper (returns Promise)
-   ========================= */
-let __jsonp_counter = 0;
-function jsonpRequest(params = {}, timeout = 9000) {
-  return new Promise((resolve, reject) => {
-    if(!SCRIPT_URL) return reject(new Error('SCRIPT_URL not set'));
-    __jsonp_counter++;
-    const cbName = '__jsonp_cb_' + Date.now() + '_' + __jsonp_counter;
-    params.callback = cbName;
-    const query = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
-    const src = SCRIPT_URL + (SCRIPT_URL.includes('?') ? '&' : '?') + query;
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = true;
-
-    let timer = setTimeout(()=> {
-      cleanup();
-      reject(new Error('JSONP timeout'));
-    }, timeout);
-
-    function cleanup(){
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
-      if(script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    window[cbName] = function(data){
-      cleanup();
-      resolve(data);
-    };
-
-    script.onerror = function(err){
-      cleanup();
-      reject(new Error('JSONP script error'));
-    };
-
-    document.head.appendChild(script);
-  });
-}
-
-/* =========================
-   High-level server helpers (JSONP)
-   ========================= */
-
-/* callServerGet: returns array (or []) */
-async function callServerGet(sheetName){
-  try{
-    const resp = await jsonpRequest({ action: 'get', sheet: sheetName }, 9000);
-    if(!resp) return [];
-    // handle a few possible shapes
-    if(resp.data && Array.isArray(resp.data)) return resp.data;
-    if(resp.success && resp.data && Array.isArray(resp.data)) return resp.data;
-    if(Array.isArray(resp)) return resp;
-    // older backends sometimes return an object with rows: [...]
-    if(resp.rows && Array.isArray(resp.rows)) return resp.rows;
-    return [];
-  } catch(err){
-    console.warn('callServerGet error', err);
-    return [];
-  }
-}
-
-/* callServerAppend: uses action=append and supplies a JSON array string param 'row' */
-async function callServerAppend(sheetName, rowArray){
-  try{
-    if(!Array.isArray(rowArray)) throw new Error('append expects an array');
-    const resp = await jsonpRequest({ action: 'append', sheet: sheetName, row: JSON.stringify(rowArray) }, 9000);
-    return resp;
-  } catch(err){
-    console.warn('append failed', err);
-    throw err;
-  }
-}
-
-/* callServerUpdateUID: ask backend to update row matching UID (backend must support update_uid) */
-async function callServerUpdateUID(sheetName, uid, rowArray) {
-  try {
-    const resp = await jsonpRequest({ action: 'update_uid', sheet: sheetName, uid: uid, row: JSON.stringify(rowArray) }, 9000);
-    return resp;
-  } catch(e) {
-    console.warn('update_uid failed', e);
-    throw e;
-  }
-}
-
-/* callServerDeleteUID: ask backend to delete by UID (backend must support delete_uid) */
-async function callServerDeleteUID(sheetName, uid) {
-  try {
-    const resp = await jsonpRequest({ action: 'delete_uid', sheet: sheetName, uid: uid }, 9000);
-    return resp;
-  } catch(e) {
-    console.warn('delete_uid failed', e);
-    throw e;
-  }
-}
-
-/* =========================
-   LOGIN UI handlers
-   - showLogin: display overlay and prefill saved cred (local only)
-   - doLogin: fetch Users sheet and compare username/password
-   - logout: clears currentUser and shows login overlay
-   ========================= */
-let currentUser = null;
-
-async function showLogin(){
-  try {
-    document.getElementById('loginOverlay').style.display = 'flex';
-    const savedUser = localStorage.getItem('sc_user');
-    if(savedUser){
-      const parsed = JSON.parse(savedUser);
-      document.getElementById('loginUser').value = parsed.username || '';
-      document.getElementById('loginPass').value = parsed.password || '';
-      document.getElementById('saveCred').checked = true;
-    }
-  } catch(e){
-    console.warn('showLogin error', e);
-  }
-}
-
-async function doLogin(){
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value.trim();
-  if(!u || !p) { document.getElementById('loginMsg').innerText = 'Enter username & password'; return; }
-  // fetch Users sheet
-  try {
-    const users = await callServerGet('Users');
-    if(!Array.isArray(users)) { document.getElementById('loginMsg').innerText='Cannot load users'; return; }
-    const matched = users.find(row => String(row['Username']) === u && String(row['Password']) === p);
-    if(!matched){ document.getElementById('loginMsg').innerText='Invalid credentials'; return; }
-    currentUser = u;
-    // save locally if chosen
-    if(document.getElementById('saveCred').checked) {
-      localStorage.setItem('sc_user', JSON.stringify({ username: u, password: p }));
-    } else {
-      localStorage.removeItem('sc_user');
-    }
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('logoutBtn').style.display = 'inline-block';
-    // load initial data will be called by init (in later parts)
-  } catch (e) {
-    console.error('login error', e);
-    document.getElementById('loginMsg').innerText = 'Login error (see console)';
-  }
-}
-
-function logout(){
-  currentUser = null;
-  document.getElementById('logoutBtn').style.display = 'none';
-  showLogin();
-}
-
-/* Wire login button events (init will call this) */
-function wireLoginButtons(){
-  const btn = document.getElementById('loginBtn');
-  if(btn) btn.addEventListener('click', doLogin);
-  const passEl = document.getElementById('loginPass');
-  if(passEl) passEl.addEventListener('keydown', function(e){ if(e.key === 'Enter') doLogin(); });
-}
-</script>
-<!-- ======= END PART 3A ======= -->
-<!-- ======= PART 3B: JS (Section handlers: addEntry, renderList, edit/delete, wireUpButtons) ======= -->
-<script>
-/* =========================
-   Section handlers: addEntry, renderList, previews, edit/delete
-   ========================= */
-
-/* Helper: map short codes back to element IDs */
-function mapSectionIdToShort(sectionId){
-  if(sectionId==='vesselJoin') return 'vj';
-  if(sectionId==='arrivingCrew') return 'ac';
-  if(sectionId==='dailyUpdates') return 'du';
-  if(sectionId==='memo') return 'memo';
-  if(sectionId==='training') return 'tr';
-  if(sectionId==='pni') return 'pni';
-  return null;
-}
-
-/* Add entry (local-first, then attempt server append) */
-function addEntry(sectionShort){
-  if(!(sectionShort in SECTIONS)) return;
-  const meta = SECTIONS[sectionShort];
-  const key = meta.key;
-  const list = loadLocal(key) || [];
-
-  let item = { id: Date.now() };
-
-  // collect fields
-  if(sectionShort === 'vj'){
-    item.vessel = document.getElementById('vjVessel').value.trim();
-    item.port = document.getElementById('vjPort').value.trim();
-    item.noCrew = document.getElementById('vjNo').value.trim();
-    item.rank = document.getElementById('vjRank').value.trim();
-    item.date = document.getElementById('vjDate').value;
-    item.flight = document.getElementById('vjFlight').value.trim();
-  } else if(sectionShort === 'ac'){
-    item.vessel = document.getElementById('acVessel').value.trim();
-    item.port = document.getElementById('acPort').value.trim();
-    item.noCrew = document.getElementById('acNo').value.trim();
-    item.rank = document.getElementById('acRank').value.trim();
-    item.date = document.getElementById('acDate').value;
-    item.flight = document.getElementById('acFlight').value.trim();
-  } else if(sectionShort === 'du'){
-    item.title = document.getElementById('duTitle').value.trim();
-    item.details = document.getElementById('duDetails').value.trim();
-    item.date = document.getElementById('duDate').value;
-  } else if(sectionShort === 'memo'){
-    item.title = document.getElementById('mTitle').value.trim();
-    item.details = document.getElementById('mDetails').value.trim();
-    item.date = document.getElementById('mDate').value;
-  } else if(sectionShort === 'tr'){
-    item.subject = document.getElementById('tSubject').value.trim();
-    item.details = document.getElementById('tDetails').value.trim();
-    item.date = document.getElementById('tDate').value;
-  } else if(sectionShort === 'pni'){
-    item.subject = document.getElementById('pSubject').value.trim();
-    item.details = document.getElementById('pDetails').value.trim();
-    item.date = document.getElementById('pDate').value;
-  }
-
-  // minimal validation
-  if(sectionShort==='vj' && (!item.vessel || !item.port || !item.noCrew || !item.rank || !item.date)){
-    return alert('Please fill required fields for Vessel Joining (Vessel/Port/No of Crew/Rank/Date).');
-  }
-  if(sectionShort==='ac' && (!item.vessel || !item.port || !item.noCrew || !item.rank || !item.date)){
-    return alert('Please fill required fields for Arriving Crew (Vessel/Port/No of Crew/Rank/Date).');
-  }
-
-  // assign UID and mark as not yet synced
-  item.uid = makeUID();
-  item.synced = false; // will be set true after successful append
-  // Save locally first
-  list.push(item);
-  saveLocal(key, list);
-  renderList(sectionShort);
-  clearForm(sectionShort);
-
-  // Build payload matching expected sheet header order (ARRAY)
-  let payloadArray = [];
-  if(sectionShort === 'vj' || sectionShort === 'ac'){
-    const payloadObj = { 'Timestamp':'', 'Vessel': item.vessel || '', 'Port': item.port || '', 'No. of Crew': item.noCrew || '', 'Rank': item.rank || '', 'Date': item.date || '', 'Flight': item.flight || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  } else if(sectionShort === 'du' || sectionShort === 'memo'){
-    const payloadObj = { 'Timestamp':'', 'Title': item.title || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  } else if(sectionShort === 'tr' || sectionShort === 'pni'){
-    const payloadObj = { 'Timestamp':'', 'Subject': item.subject || '', 'Details': item.details || '', 'Date': item.date || '', 'UID': item.uid };
-    payloadArray = buildRowForSheet(meta.sheet, payloadObj);
-  }
-
-  // Try to append to server (best-effort). On success mark local item as synced
-  callServerAppend(meta.sheet, payloadArray).then(res=>{
-    // mark the local item as synced
-    const localList = loadLocal(key);
-    const idx = localList.findIndex(x => x.uid === item.uid);
-    if(idx >= 0){
-      localList[idx].synced = true;
-      localList[idx].uid = item.uid;
-      saveLocal(key, localList);
-    }
-    // refresh authoritative data from sheet to avoid duplicates
-    syncFromSheet().catch(()=>{});
-  }).catch(err=>{
-    console.warn('append failed, saved locally for retry on next sync', err);
-  });
-}
-
-/* render list UI */
-function renderList(sectionShort){
-  const meta = SECTIONS[sectionShort];
-  const key = meta.key;
-
-  // take authoritative local store (we store items with uid)
-  const raw = loadLocal(key) || [];
-  // filter out corrupted entries
-  const list = raw.filter(ep => ep && (ep.vessel || ep.port || ep.title || ep.subject || ep.details || ep.name || ep.message || ep.rank));
-
-  const idMap = { vj: 'vj_list', ac: 'ac_list', du: 'du_list', memo: 'm_list', tr: 't_list', pni: 'p_list' };
-  const containerEl = document.getElementById(idMap[sectionShort]);
-  if(!containerEl) return;
-  containerEl.innerHTML = '';
-
-  list.forEach(ep => {
-    const row = document.createElement('div');
-    row.className = 'row-entry';
-    const left = document.createElement('div'); left.className = 'left';
-
-    if(sectionShort === 'vj'){
-      left.innerHTML = `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
-        <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
-        <div class="small-note">Date: ${fmtDate(ep.date)} ${ep.flight? ' · ' + escapeHtml(ep.flight):''}${ep.synced? ' · <span class="badge-synced">synced</span>':''}</div>`;
-    } else if(sectionShort === 'ac'){
-      left.innerHTML = `<div style="font-weight:700">${escapeHtml(ep.vessel)}</div>
-        <div class="entry-meta">${escapeHtml(ep.port)} · ${escapeHtml(ep.noCrew)} crew · ${escapeHtml(ep.rank)}</div>
-        <div class="small-note">Arrival: ${fmtDate(ep.date)} ${ep.flight? ' · ' + escapeHtml(ep.flight):''}${ep.synced? ' · <span class="badge-synced">synced</span>':''}</div>`;
-    } else if(sectionShort === 'du' || sectionShort === 'memo'){
-      const title = escapeHtml(ep.title || '');
-      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-note">${escapeHtml(ep.details)}</div><div class="small-note">${fmtDate(ep.date)}${ep.synced? ' · <span class="badge-synced">synced</span>':''}</div>`;
-    } else if(sectionShort === 'tr' || sectionShort === 'pni'){
-      const title = escapeHtml(ep.subject || '');
-      left.innerHTML = `<div style="font-weight:700">${title}</div><div class="small-note">${escapeHtml(ep.details)}</div><div class="small-note">${fmtDate(ep.date)}${ep.synced? ' · <span class="badge-synced">synced</span>':''}</div>`;
-    }
-
-    const right = document.createElement('div'); right.className = 'right';
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn btn-sm btn-outline-primary';
-    editBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-    editBtn.onclick = ()=> startEdit(sectionShort, ep.uid || ep.id);
-
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm btn-outline-danger';
-    delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-    delBtn.onclick = ()=> deleteEntry(sectionShort, ep.uid || ep.id);
-
-    right.appendChild(editBtn);
-    right.appendChild(delBtn);
-
-    row.appendChild(left);
-    row.appendChild(right);
-    containerEl.appendChild(row);
+    // Fetch all sheet data
+    fetchAllSheets();
   });
 
-  updateSmallPreview(sectionShort);
-  updateCounts();
-}
-
-/* small dashboard preview: last 3 */
-function updateSmallPreview(sectionShort){
-  const key = SECTIONS[sectionShort].key;
-  const list = loadLocal(key) || [];
-  const previewIdMap = { vj:'vesselPreviewSmall', ac:'arrivalsPreviewSmall', du:'updatesPreviewSmall', memo:'memoPreviewSmall', tr:'trainingPreviewSmall', pni:'pniPreviewSmall' };
-  const previewEl = document.getElementById(previewIdMap[sectionShort]);
-  if(!previewEl) return;
-  const last3 = list.slice(-3).reverse();
-  previewEl.innerHTML = last3.map(item=>{
-    if(sectionShort==='vj') return `<div><strong>${escapeHtml(item.vessel)}</strong> — ${escapeHtml(item.port)} · ${escapeHtml(item.noCrew)} crew · ${escapeHtml(item.rank)}${item.synced? ' · (synced)':''}</div>`;
-    if(sectionShort==='ac') return `<div><strong>${escapeHtml(item.vessel)}</strong> — ${escapeHtml(item.port)} · ${escapeHtml(item.noCrew)} crew · ${escapeHtml(item.rank)}${item.synced? ' · (synced)':''}</div>`;
-    if(sectionShort==='du') return `<div><strong>${escapeHtml(item.title)}</strong> — ${fmtDate(item.date)}<div class="small-note">${escapeHtml(item.details)}</div></div>`;
-    if(sectionShort==='memo') return `<div><strong>${escapeHtml(item.title)}</strong> — ${fmtDate(item.date)}</div>`;
-    if(sectionShort==='tr') return `<div><strong>${escapeHtml(item.subject)}</strong> — ${fmtDate(item.date)}</div>`;
-    if(sectionShort==='pni') return `<div><strong>${escapeHtml(item.subject)}</strong> — ${fmtDate(item.date)}</div>`;
-    return '';
-  }).join('');
-}
-
-/* update counts */
-function updateCounts(){
-  document.getElementById('countVessel').innerText = (loadLocal(SECTIONS.vj.key) || []).length;
-  document.getElementById('countArrivals').innerText = (loadLocal(SECTIONS.ac.key) || []).length;
-  document.getElementById('countUpdates').innerText = (loadLocal(SECTIONS.du.key) || []).length;
-  document.getElementById('countMemo').innerText = (loadLocal(SECTIONS.memo.key) || []).length;
-  document.getElementById('countTraining').innerText = (loadLocal(SECTIONS.tr.key) || []).length;
-  document.getElementById('countPNI').innerText = (loadLocal(SECTIONS.pni.key) || []).length;
-}
-
-/* clear section local only */
-function clearSection(sectionId){
-  if(!confirm('Clear ALL entries for this section (local only)?')) return;
-  const short = mapSectionIdToShort(sectionId);
-  if(!short) return;
-  localStorage.removeItem(SECTIONS[short].key);
-  renderList(short);
-}
-
-/* clear all local storage */
-function clearAllLocal(){
-  if(!confirm('Clear ALL local data? This will NOT delete your Google Sheet data.')) return;
-  Object.keys(SECTIONS).forEach(k => localStorage.removeItem(SECTIONS[k].key));
-  Object.keys(SECTIONS).forEach(k => renderList(k));
-  updateCounts();
-}
-
-/* delete entry locally AND on server if UID exists */
-function deleteEntry(sectionShort, uidOrId){
-  const meta = SECTIONS[sectionShort];
-  const key = meta.key;
-  let list = loadLocal(key) || [];
-  // find index by uid (or by id fallback)
-  const idx = list.findIndex(x => (x.uid === uidOrId) || (String(x.id) === String(uidOrId)));
-  if (idx === -1) return;
-  if (!confirm('Delete this entry?')) return;
-
-  const uid = list[idx].uid || null;
-  // remove locally
-  list.splice(idx, 1);
-  saveLocal(key, list);
-  renderList(sectionShort);
-
-  // if uid exists, attempt server delete
-  if (uid) {
-    callServerDeleteUID(meta.sheet, uid).then(res=>{
-      console.log('server delete OK', res);
-      // refresh authoritative copy
-      syncFromSheet().catch(()=>{});
-    }).catch(err=>{
-      console.warn('server delete failed (will retry on next sync)', err);
-    });
-  }
-}
-
-/* start edit (local) - populates form and sets editState */
-function startEdit(sectionShort, uidOrId){
-  const key = SECTIONS[sectionShort].key;
-  const list = loadLocal(key) || [];
-  const item = list.find(x=> (x.uid === uidOrId) || (String(x.id) === String(uidOrId)) );
-  if(!item) return alert('Item not found for edit');
-  editState[sectionShort] = { uid: item.uid || null };
-
-  if(sectionShort === 'vj'){
-    document.getElementById('vjVessel').value = item.vessel || '';
-    document.getElementById('vjPort').value = item.port || '';
-    document.getElementById('vjNo').value = item.noCrew || '';
-    document.getElementById('vjRank').value = item.rank || '';
-    document.getElementById('vjDate').value = item.date || '';
-    document.getElementById('vjFlight').value = item.flight || '';
-    window.scrollTo({top:0,behavior:'smooth'});
-  } else if(sectionShort === 'ac'){
-    document.getElementById('acVessel').value = item.vessel || '';
-    document.getElementById('acPort').value = item.port || '';
-    document.getElementById('acNo').value = item.noCrew || '';
-    document.getElementById('acRank').value = item.rank || '';
-    document.getElementById('acDate').value = item.date || '';
-    document.getElementById('acFlight').value = item.flight || '';
-    window.scrollTo({top:0,behavior:'smooth'});
-  } else if(sectionShort === 'du'){
-    document.getElementById('duTitle').value = item.title || '';
-    document.getElementById('duDetails').value = item.details || '';
-    document.getElementById('duDate').value = item.date || '';
-  } else if(sectionShort === 'memo'){
-    document.getElementById('mTitle').value = item.title || '';
-    document.getElementById('mDetails').value = item.details || '';
-    document.getElementById('mDate').value = item.date || '';
-  } else if(sectionShort === 'tr'){
-    document.getElementById('tSubject').value = item.subject || '';
-    document.getElementById('tDetails').value = item.details || '';
-    document.getElementById('tDate').value = item.date || '';
-  } else if(sectionShort === 'pni'){
-    document.getElementById('pSubject').value = item.subject || '';
-    document.getElementById('pDetails').value = item.details || '';
-    document.getElementById('pDate').value = item.date || '';
+  function setStatus(message) {
+    document.getElementById('statusText').textContent = message;
   }
 
-  // change add button text to Update
-  const mapBtn = { vj:'vjAddBtn', ac:'acAddBtn', du:'duAddBtn', memo:'mAddBtn', tr:'tAddBtn', pni:'pAddBtn' };
-  const btn = document.getElementById(mapBtn[sectionShort]);
-  if(btn){ btn.innerText = 'Update'; btn.classList.remove('btn-success'); btn.classList.add('btn-warning'); }
-}
-
-/* highlight Add button back to Add and clear edit state */
-function clearForm(sectionShort){
-  if(sectionShort==='vj'){ ['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='ac'){ ['acVessel','acPort','acNo','acRank','acDate','acFlight'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='du'){ ['duTitle','duDetails','duDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='memo'){ ['mTitle','mDetails','mDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='tr'){ ['tSubject','tDetails','tDate'].forEach(id=>document.getElementById(id).value=''); }
-  if(sectionShort==='pni'){ ['pSubject','pDetails','pDate'].forEach(id=>document.getElementById(id).value=''); }
-  ['vjAddBtn','acAddBtn','duAddBtn','mAddBtn','tAddBtn','pAddBtn'].forEach(id=>{
-    const b=document.getElementById(id); if(b){ b.innerText='Add'; b.classList.remove('btn-warning'); b.classList.add('btn-success'); }
-  });
-  // reset edit state for that section
-  if(sectionShort) editState[sectionShort]=null;
-}
-
-/* wire up buttons */
-function wireUpButtons(){
-  // VJ Add / Update
-  const vjAdd = document.getElementById('vjAddBtn');
-  if(vjAdd) vjAdd.addEventListener('click', async ()=> {
-    const short='vj';
-    if(editState.vj && editState.vj.uid){
-      let list = loadLocal(SECTIONS.vj.key) || [];
-      const uid = editState.vj.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].vessel = document.getElementById('vjVessel').value.trim();
-        list[idx].port = document.getElementById('vjPort').value.trim();
-        list[idx].noCrew = document.getElementById('vjNo').value.trim();
-        list[idx].rank = document.getElementById('vjRank').value.trim();
-        list[idx].date = document.getElementById('vjDate').value;
-        list[idx].flight = document.getElementById('vjFlight').value.trim();
-        list[idx].synced = false;
-        saveLocal(SECTIONS.vj.key, list);
-        renderList('vj');
-        const payloadObj = { 'Timestamp':'', 'Vessel': list[idx].vessel || '', 'Port': list[idx].port || '', 'No. of Crew': list[idx].noCrew || '', 'Rank': list[idx].rank || '', 'Date': list[idx].date || '', 'Flight': list[idx].flight || '', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.vj.sheet, payloadObj);
-        try {
-          await callServerUpdateUID(SECTIONS.vj.sheet, uid, rowArr);
-          list[idx].synced = true;
-          saveLocal(SECTIONS.vj.key, list);
-          syncFromSheet().catch(()=>{});
-        } catch(e){
-          console.warn('update failed', e);
-        }
-        clearForm('vj');
-        editState.vj = null;
-      }
-    } else {
-      addEntry('vj');
-    }
-  });
-  const vjReset = document.getElementById('vjResetBtn'); if(vjReset) vjReset.addEventListener('click', ()=> clearForm('vj'));
-
-  // AC Add / Update
-  const acAdd = document.getElementById('acAddBtn');
-  if(acAdd) acAdd.addEventListener('click', async ()=> {
-    const short='ac';
-    if(editState.ac && editState.ac.uid){
-      let list = loadLocal(SECTIONS.ac.key) || [];
-      const uid = editState.ac.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].vessel = document.getElementById('acVessel').value.trim();
-        list[idx].port = document.getElementById('acPort').value.trim();
-        list[idx].noCrew = document.getElementById('acNo').value.trim();
-        list[idx].rank = document.getElementById('acRank').value.trim();
-        list[idx].date = document.getElementById('acDate').value;
-        list[idx].flight = document.getElementById('acFlight').value.trim();
-        list[idx].synced = false;
-        saveLocal(SECTIONS.ac.key, list);
-        renderList('ac');
-        const payloadObj = { 'Timestamp':'', 'Vessel': list[idx].vessel || '', 'Port': list[idx].port || '', 'No. of Crew': list[idx].noCrew || '', 'Rank': list[idx].rank || '', 'Date': list[idx].date || '', 'Flight': list[idx].flight || '', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.ac.sheet, payloadObj);
-        try {
-          await callServerUpdateUID(SECTIONS.ac.sheet, uid, rowArr);
-          list[idx].synced = true; saveLocal(SECTIONS.ac.key, list); syncFromSheet().catch(()=>{});
-        } catch(e){ console.warn('update failed', e); }
-        clearForm('ac'); editState.ac=null;
-      }
-    } else { addEntry('ac'); }
-  });
-  const acReset = document.getElementById('acResetBtn'); if(acReset) acReset.addEventListener('click', ()=> clearForm('ac'));
-
-  // DU Add / Update
-  const duAdd = document.getElementById('duAddBtn');
-  if(duAdd) duAdd.addEventListener('click', async ()=> {
-    const short = 'du';
-    if(editState.du && editState.du.uid){
-      let list = loadLocal(SECTIONS.du.key) || [];
-      const uid = editState.du.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].title = document.getElementById('duTitle').value.trim();
-        list[idx].details = document.getElementById('duDetails').value.trim();
-        list[idx].date = document.getElementById('duDate').value;
-        list[idx].synced = false; saveLocal(SECTIONS.du.key, list); renderList('du');
-        const payloadObj = { 'Timestamp':'', 'Title': list[idx].title || '', 'Details': list[idx].details || '', 'Date': list[idx].date || '', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.du.sheet, payloadObj);
-        try { await callServerUpdateUID(SECTIONS.du.sheet, uid, rowArr); list[idx].synced=true; saveLocal(SECTIONS.du.key,list); syncFromSheet().catch(()=>{}); } catch(e){ console.warn('update failed', e); }
-        clearForm('du'); editState.du = null;
-      }
-    } else { addEntry('du'); }
-  });
-  const duReset = document.getElementById('duResetBtn'); if(duReset) duReset.addEventListener('click', ()=> clearForm('du'));
-
-  // Memo Add / Update
-  const mAdd = document.getElementById('mAddBtn');
-  if(mAdd) mAdd.addEventListener('click', async ()=> {
-    const short = 'memo';
-    if(editState.memo && editState.memo.uid){
-      let list = loadLocal(SECTIONS.memo.key) || [];
-      const uid = editState.memo.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].title = document.getElementById('mTitle').value.trim();
-        list[idx].details = document.getElementById('mDetails').value.trim();
-        list[idx].date = document.getElementById('mDate').value;
-        list[idx].synced = false; saveLocal(SECTIONS.memo.key, list); renderList('memo');
-        const payloadObj = { 'Timestamp':'', 'Title': list[idx].title || '', 'Details': list[idx].details || '', 'Date': list[idx].date || '', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.memo.sheet, payloadObj);
-        try { await callServerUpdateUID(SECTIONS.memo.sheet, uid, rowArr); list[idx].synced=true; saveLocal(SECTIONS.memo.key,list); syncFromSheet().catch(()=>{}); } catch(e){ console.warn('update failed', e); }
-        clearForm('memo'); editState.memo = null;
-      }
-    } else { addEntry('memo'); }
-  });
-  const mReset = document.getElementById('mResetBtn'); if(mReset) mReset.addEventListener('click', ()=> clearForm('memo'));
-
-  // Training Add / Update
-  const tAdd = document.getElementById('tAddBtn');
-  if(tAdd) tAdd.addEventListener('click', async ()=> {
-    const short = 'tr';
-    if(editState.tr && editState.tr.uid){
-      let list = loadLocal(SECTIONS.tr.key) || [];
-      const uid = editState.tr.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].subject = document.getElementById('tSubject').value.trim();
-        list[idx].details = document.getElementById('tDetails').value.trim();
-        list[idx].date = document.getElementById('tDate').value;
-        list[idx].synced=false; saveLocal(SECTIONS.tr.key,list); renderList('tr');
-        const payloadObj = { 'Timestamp':'', 'Subject': list[idx].subject||'', 'Details': list[idx].details||'', 'Date': list[idx].date||'', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.tr.sheet, payloadObj);
-        try { await callServerUpdateUID(SECTIONS.tr.sheet, uid, rowArr); list[idx].synced=true; saveLocal(SECTIONS.tr.key,list); syncFromSheet().catch(()=>{}); } catch(e){ console.warn('update failed', e); }
-        clearForm('tr'); editState.tr=null;
-      }
-    } else { addEntry('tr'); }
-  });
-  const tReset = document.getElementById('tResetBtn'); if(tReset) tReset.addEventListener('click', ()=> clearForm('tr'));
-
-  // PNI Add / Update
-  const pAdd = document.getElementById('pAddBtn');
-  if(pAdd) pAdd.addEventListener('click', async ()=> {
-    const short = 'pni';
-    if(editState.pni && editState.pni.uid){
-      let list = loadLocal(SECTIONS.pni.key) || [];
-      const uid = editState.pni.uid;
-      const idx = list.findIndex(x=>x.uid === uid);
-      if(idx>=0){
-        list[idx].subject = document.getElementById('pSubject').value.trim();
-        list[idx].details = document.getElementById('pDetails').value.trim();
-        list[idx].date = document.getElementById('pDate').value;
-        list[idx].synced=false; saveLocal(SECTIONS.pni.key,list); renderList('pni');
-        const payloadObj = { 'Timestamp':'', 'Subject': list[idx].subject||'', 'Details': list[idx].details||'', 'Date': list[idx].date||'', 'UID': uid };
-        const rowArr = buildRowForSheet(SECTIONS.pni.sheet, payloadObj);
-        try { await callServerUpdateUID(SECTIONS.pni.sheet, uid, rowArr); list[idx].synced=true; saveLocal(SECTIONS.pni.key,list); syncFromSheet().catch(()=>{}); } catch(e){ console.warn('update failed', e); }
-        clearForm('pni'); editState.pni=null;
-      }
-    } else { addEntry('pni'); }
-  });
-  const pReset = document.getElementById('pResetBtn'); if(pReset) pReset.addEventListener('click', ()=> clearForm('pni'));
-
-  // Chat send is in Part 3C
-}
-/* wireUpButtons ends here (call this from init in Part 3F) */
-</script>
-<!-- ======= END PART 3B ======= -->
-<!-- ======= PART 3C: Chatboard + Sync (first half) ======= -->
-<script>
-/* =========================
-   CHATBOARD
-   ========================= */
-
-/* Load chat from Google Sheet */
-async function loadChat(){
-  const data = await callServerGet('ChatBoard');
-  if(!Array.isArray(data)) return;
-
-  // rows from sheet → normalize field names
-  const rows = data.map(r => {
-    return {
-      name: r['Name'] || r['name'] || '',
-      message: r['Message'] || r['message'] || '',
-      date: r['Date'] || r['date'] || r['Timestamp'] || '',
-      uid: r['UID'] || r['Uid'] || r['uid'] || ''
-    };
-  }).reverse(); // newest last in sheet, reverse to show newest at bottom
-
-  // save authoritative chat local
-  saveLocal(SECTIONS.chat.key, rows.map(r => ({ ...r, synced:true })));
-
-  // render into chat log
-  const el = document.getElementById('chatLog');
-  el.innerHTML = rows.map(row => `
-    <div style="margin-bottom:8px">
-      <strong>${escapeHtml(row.name)}</strong>
-      <div>${escapeHtml(row.message)}</div>
-      <small class="small-note">${fmtDate(row.date)}</small>
-    </div>
-  `).join('');
-
-  el.scrollTop = el.scrollHeight;
-}
-
-/* Send chat message */
-function sendChat(){
-  const name = document.getElementById('chatName').value.trim() || 'Anonymous';
-  const msg = document.getElementById('chatMsg').value.trim();
-  if(!msg) return alert('Please enter a message');
-
-  // local preview
-  const key = SECTIONS.chat.key;
-  const local = loadLocal(key);
-  const uid = makeUID();
-  const entry = {
-    id: Date.now(),
-    name,
-    message: msg,
-    date: new Date().toISOString(),
-    uid,
-    synced:false
-  };
-  local.push(entry);
-  saveLocal(key, local);
-
-  // Build row for ChatBoard sheet
-  const rowArr = buildRowForSheet(
-    'ChatBoard',
-    { Timestamp:'', Name:name, Message:msg, Date:new Date().toISOString(), UID:uid }
-  );
-
-  // Append to server
-  callServerAppend('ChatBoard', rowArr).then(()=>{
-    const localNow = loadLocal(key);
-    const idx = localNow.findIndex(x=>x.uid===uid);
-    if(idx>=0){
-      localNow[idx].synced = true;
-      saveLocal(key, localNow);
-    }
-    document.getElementById('chatMsg').value='';
-    loadChat().catch(()=>{});
-  }).catch(err=>{
-    console.warn('chat append failed', err);
-    document.getElementById('chatMsg').value='';
-    loadChat().catch(()=>{});
-  });
-}
-
-/* =========================
-   SYNC ENGINE — load entire sheets → local
-   ========================= */
-async function syncFromSheet(){
-  const tabs = ['Vessel_Join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
-
-  const now = new Date();
-  const lastSyncEl = document.getElementById('lastSync');
-  if(lastSyncEl) lastSyncEl.innerText = now.toLocaleString();
-
-  for(const tab of tabs){
-    const data = await callServerGet(tab);
-    if(!Array.isArray(data)) continue;
-
-    let mapped = [];
-
-    /* ====== VESSEL JOIN ====== */
-    if(tab === 'Vessel_Join'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        vessel: r['Vessel'] || '',
-        port: r['Port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || '',
-        rank: r['Rank'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        flight: r['Flight'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.vj.key, mapped);
-      renderList('vj');
-    }
-
-    /* ====== ARRIVALS ====== */
-    else if(tab === 'Arrivals'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        vessel: r['Vessel'] || '',
-        port: r['Port'] || '',
-        noCrew: r['No. of Crew'] || r['No of Crew'] || '',
-        rank: r['Rank'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        flight: r['Flight'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.ac.key, mapped);
-      renderList('ac');
-    }
-
-    /* ====== UPDATES ====== */
-    else if(tab === 'Updates'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        title: r['Title'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.du.key, mapped);
-      renderList('du');
-    }
-
-    /* ====== MEMO ====== */
-    else if(tab === 'Memo'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        title: r['Title'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.memo.key, mapped);
-      renderList('memo');
-    }
-
-    /* ====== TRAINING ====== */
-    else if(tab === 'Training'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        subject: r['Subject'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.tr.key, mapped);
-      renderList('tr');
-    }
-
-    /* ====== PNI ====== */
-    else if(tab === 'Pni'){
-      mapped = data.map(r => ({
-        id: r['UID'] || makeUID(),
-        subject: r['Subject'] || '',
-        details: r['Details'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || '',
-        synced:true
-      }));
-      saveLocal(SECTIONS.pni.key, mapped);
-      renderList('pni');
-    }
-
-    /* ====== CHATBOARD ====== */
-    else if(tab === 'ChatBoard'){
-      const chatRows = data.map(r => ({
-        name: r['Name'] || '',
-        message: r['Message'] || '',
-        date: r['Date'] || r['Timestamp'] || '',
-        uid: r['UID'] || ''
-      }));
-      saveLocal(SECTIONS.chat.key, chatRows.map(r=>({ ...r, synced:true })));
-
-      const el = document.getElementById('chatLog');
-      el.innerHTML = chatRows.reverse().map(row => `
-        <div style="margin-bottom:8px">
-          <strong>${escapeHtml(row.name)}</strong>
-          <div>${escapeHtml(row.message)}</div>
-          <small class="small-note">${fmtDate(row.date)}</small>
-        </div>
-      `).join('');
-    }
-  }
-}
-</script>
-<!-- ======= END PART 3C ======= -->
-<!-- ======= PART 3D: Sync (second half) + PDF export + utilities ======= -->
-<script>
-/* =========================
-   RETRY UNSYNCED LOCAL DATA
-   ========================= */
-async function retryLocalAppends(){
-  // sections to retry
-  const order = ['vj','ac','du','memo','tr','pni'];
-
-  for(const sec of order){
-    const cfg = SECTIONS[sec];
-    const key = cfg.key;
-    const tab = cfg.tab;
-    const local = loadLocal(key);
-    let changed = false;
-
-    for(const row of local){
-      if(row.synced === false){
-
-        // build sheet row
-        const out = {};
-        for(const col of cfg.cols){
-          const field = col.toLowerCase().replace(/\s+/g,'');
-          const match = Object.keys(row).find(k => k.toLowerCase() === field);
-          out[col] = match ? row[match] : row[col] || '';
-        }
-
-        const arr = buildRowForSheet(tab, out);
-        try{
-          await callServerAppend(tab, arr);
-          row.synced = true;
-          changed = true;
-        }catch(err){
-          console.warn('retry append failed', err);
-        }
-      }
-    }
-
-    if(changed){
-      saveLocal(key, local);
-      renderList(sec);
-    }
+  function showSheet(sheetId) {
+    const sheets = document.querySelectorAll('.sheet-content');
+    sheets.forEach(s => s.style.display = 'none');
+    const sheet = document.getElementById(sheetId);
+    if (sheet) sheet.style.display = 'block';
+    setStatus(sheetId + " loaded");
   }
 
-  // Chatboard local unsynced retry
-  const chat = loadLocal(SECTIONS.chat.key);
-  let chatChanged = false;
-  for(const row of chat){
-    if(row.synced === false){
-      const sheetRow = buildRowForSheet(
-        'ChatBoard',
-        {
-          Timestamp:'',
-          Name: row.name,
-          Message: row.message,
-          Date: row.date,
-          UID: row.uid
-        }
-      );
-      try{
-        await callServerAppend('ChatBoard', sheetRow);
-        row.synced = true;
-        chatChanged = true;
-      }catch(err){
-        console.warn('chat retry failed', err);
-      }
-    }
-  }
-  if(chatChanged){
-    saveLocal(SECTIONS.chat.key, chat);
-    loadChat();
-  }
-}
-
-/* =========================
-   MANUAL SYNC
-   ========================= */
-async function manualSync(){
-  try{
-    await syncFromSheet();
-    await retryLocalAppends();
-    await syncFromSheet();
-    alert('Sync complete');
-  }catch(err){
-    alert('Sync error: ' + err);
-  }
-}
-
-/* =========================
-   STICKY NOTE
-   ========================= */
-function saveSticky(){
-  localStorage.setItem('stickyNote', document.getElementById('stickyNote').value);
-}
-function loadSticky(){
-  const v = localStorage.getItem('stickyNote') || '';
-  document.getElementById('stickyNote').value = v;
-}
-
-/* =========================
-   QUICK DASHBOARD PREVIEWS
-   ========================= */
-function updateDashboardPreviews(){
-  const vj = loadLocal(SECTIONS.vj.key);
-  const ac = loadLocal(SECTIONS.ac.key);
-  const du = loadLocal(SECTIONS.du.key);
-  const memo = loadLocal(SECTIONS.memo.key);
-  const tr = loadLocal(SECTIONS.tr.key);
-  const pni = loadLocal(SECTIONS.pni.key);
-
-  // counts
-  setText('countVessel', vj.length);
-  setText('countArrivals', ac.length);
-  setText('countUpdates', du.length);
-  setText('countMemo', memo.length);
-  setText('countTraining', tr.length);
-  setText('countPNI', pni.length);
-
-  // previews
-  setPreview('vesselPreviewSmall', vj, x=>`${x.vessel} — ${x.port}`);
-  setPreview('arrivalsPreviewSmall', ac, x=>`${x.vessel} — ${x.port}`);
-  setPreview('updatesPreviewSmall', du, x=>`${x.title}`);
-  setPreview('memoPreviewSmall', memo, x=>`${x.title}`);
-  setPreview('trainingPreviewSmall', tr, x=>`${x.subject}`);
-  setPreview('pniPreviewSmall', pni, x=>`${x.subject}`);
-}
-
-function setText(id, val){
-  const el = document.getElementById(id);
-  if(el) el.innerText = val;
-}
-
-function setPreview(id, arr, fn){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.innerHTML = arr.slice(0,5).map(fn).map(x=>`<div>${escapeHtml(x)}</div>`).join('') || '<i>No data</i>';
-}
-
-/* =========================
-   PDF EXPORT (jsPDF + AutoTable)
-   ========================= */
-function printSectionPDF(sectionId, title, landscape=false){
-  const section = document.getElementById(sectionId);
-  if(!section) return;
-
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    orientation: landscape ? 'landscape':'portrait',
-    unit:'pt', format:'A4'
-  });
-
-  const rows = Array.from(section.querySelectorAll('.row-entry'));
-  const body = rows.map(r => {
-    const left = r.querySelector('.left')?.innerText.trim() || '';
-    return [left.replace(/\s+/g,' ')];
-  });
-
-  doc.setFontSize(14);
-  doc.text(title, 40, 40);
-
-  doc.autoTable({
-    startY: 60,
-    head:[['Entries']],
-    body: body,
-    styles:{ fontSize:8 }
-  });
-
-  doc.save(title + '.pdf');
-}
-
-/* =========================
-   UTILITIES
-   ========================= */
-function makeUID(){
-  return 'UID_' + Math.random().toString(36).substring(2) + Date.now();
-}
-
-function escapeHtml(s){
-  return (s||'').replace(/[&<>"']/g, m =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]
-  );
-}
-
-function fmtDate(d){
-  if(!d) return '';
-  const dt = new Date(d);
-  if(isNaN(dt)) return d;
-  return dt.toLocaleString();
-}
-</script>
-<!-- ======= END PART 3D ======= -->
-<!-- ======= PART 3E: Advanced PDF / Monthly Report + Helpers ======= -->
-<script>
-/* =========================
-   ADVANCED PDF / MONTHLY REPORT (uses jsPDF + autoTable)
-   - exportMonthlyPDF(all=true) exports all sections into one PDF with signature page
-   - generateSectionForPDF builds rows for a given local list
-   ========================= */
-
-function generateSectionForPDF(doc, sectionTitle, list, headers, rowMapper){
-  if(!Array.isArray(list) || list.length === 0) return;
-  // add page only if not first content page
-  if(doc.internal.getNumberOfPages() > 0) doc.addPage('landscape');
-  doc.setFontSize(12);
-  doc.text(sectionTitle, 20, 18);
-
-  const rows = list.map(rowMapper);
-  doc.autoTable({
-    head: [headers],
-    body: rows,
-    startY: 28,
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [245,245,245] },
-    theme: 'striped'
-  });
-}
-
-/* High-level monthly export: allSections=true exports everything; else single section (id) */
-function exportMonthlyPDF(allSections = true, singleSectionShort = null){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'A4' });
-  doc.setFontSize(14);
-  const title = 'SeaCrew Monthly Report';
-  doc.text(title, 20, 20);
-
-  if(allSections){
-    // Vessel Join
-    generateSectionForPDF(doc, 'Vessel Crew Joining', loadLocal(SECTIONS.vj.key), ['Vessel','Port','No. Crew','Rank','Date','Flight'], r => [
-      r.vessel || '', r.port || '', String(r.noCrew || ''), r.rank || '', fmtDate(r.date || ''), r.flight || ''
-    ]);
-
-    // Arrivals
-    generateSectionForPDF(doc, 'Arriving Crew', loadLocal(SECTIONS.ac.key), ['Vessel','Port','No. Crew','Rank','Arrival','Flight'], r => [
-      r.vessel || '', r.port || '', String(r.noCrew || ''), r.rank || '', fmtDate(r.date || ''), r.flight || ''
-    ]);
-
-    // Daily Updates
-    generateSectionForPDF(doc, 'Daily Updates', loadLocal(SECTIONS.du.key), ['Title','Details','Date'], r => [
-      r.title || '', r.details || '', fmtDate(r.date || '')
-    ]);
-
-    // Memo
-    generateSectionForPDF(doc, 'Memo', loadLocal(SECTIONS.memo.key), ['Title','Details','Date'], r => [
-      r.title || '', r.details || '', fmtDate(r.date || '')
-    ]);
-
-    // Training
-    generateSectionForPDF(doc, 'Training', loadLocal(SECTIONS.tr.key), ['Subject','Details','Date'], r => [
-      r.subject || '', r.details || '', fmtDate(r.date || '')
-    ]);
-
-    // P&I
-    generateSectionForPDF(doc, 'P&I / Events', loadLocal(SECTIONS.pni.key), ['Subject','Details','Date'], r => [
-      r.subject || '', r.details || '', fmtDate(r.date || '')
-    ]);
-
-    // Signature / prepared by page
-    doc.addPage('landscape');
-    doc.setFontSize(12);
-    doc.text('Prepared By:', 20, 40);
-    doc.setFontSize(14);
-    doc.text('__________________________________', 20, 70);
-    doc.text('General Manager', 20, 88);
-
-    doc.save('SeaCrew_Monthly_Report.pdf');
-    return;
+  // Placeholder functions for login and fetchAll
+  function initializeLogin() {
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) loginScreen.style.display = 'block';
   }
 
-  // Single-section path (short codes)
-  if(!singleSectionShort) { alert('No section specified'); return; }
-  const mapping = {
-    vj: { name:'Vessel Crew Joining', headers:['Vessel','Port','No. Crew','Rank','Date','Flight'], fn: r=>[r.vessel||'', r.port||'', String(r.noCrew||''), r.rank||'', fmtDate(r.date||''), r.flight||''] },
-    ac: { name:'Arriving Crew', headers:['Vessel','Port','No. Crew','Rank','Arrival','Flight'], fn: r=>[r.vessel||'', r.port||'', String(r.noCrew||''), r.rank||'', fmtDate(r.date||''), r.flight||''] },
-    du: { name:'Daily Updates', headers:['Title','Details','Date'], fn: r=>[r.title||'', r.details||'', fmtDate(r.date||'')] },
-    memo:{ name:'Memo', headers:['Title','Details','Date'], fn: r=>[r.title||'', r.details||'', fmtDate(r.date||'')] },
-    tr: { name:'Training', headers:['Subject','Details','Date'], fn: r=>[r.subject||'', r.details||'', fmtDate(r.date||'')] },
-    pni:{ name:'P&I / Events', headers:['Subject','Details','Date'], fn: r=>[r.subject||'', r.details||'', fmtDate(r.date||'')] }
-  };
-
-  const cfg = mapping[singleSectionShort];
-  if(!cfg) { alert('Unknown section'); return; }
-
-  const data = loadLocal(SECTIONS[singleSectionShort].key) || [];
-  generateSectionForPDF(doc, cfg.name, data, cfg.headers, cfg.fn);
-  doc.save((cfg.name.replace(/\s+/g,'_')) + '.pdf');
-}
-
-/* Attach convenience UI buttons in the page to call exportMonthlyPDF */
-function wirePDFButtons(){
-  const allBtn = document.querySelector('[onclick*="printSectionPDF(\'dashboard\',')');
-  // user may have custom buttons; we wire if present
-  // Also wire the per-section export buttons by id used in HTML
-  const map = {
-    vesselJoin: 'vesselJoin',
-    arrivingCrew: 'arrivingCrew',
-    dailyUpdates: 'dailyUpdates',
-    memo: 'memo',
-    training: 'training',
-    pni: 'pni'
-  };
-  Object.keys(map).forEach(sectionId=>{
-    const btn = document.querySelector(`#${sectionId} button[onclick*="printSectionPDF"]`);
-    if(btn){
-      btn.addEventListener('click', ()=> exportMonthlyPDF(false, map[sectionId]));
-    }
-  });
-  // global monthly PDF button (if present)
-  const globalBtn = document.querySelector('button[onclick*="printSectionPDF(\'dashboard\'');
-  if(globalBtn){
-    globalBtn.addEventListener('click', ()=> exportMonthlyPDF(true));
-  }
-}
-
-/* =========================
-   SAFETY: quick validator for required functions and mapping
-   (warn in console if a required piece is missing)
-   ========================= */
-function validateRuntime(){
-  const missing = [];
-  if(!window.jspdf) missing.push('jsPDF (cdn)');
-  if(typeof doc === 'undefined' && !window.jspdf) {/*noop*/}
-  if(!document.getElementById('loginOverlay')) missing.push('loginOverlay element');
-  if(missing.length) console.warn('Runtime validation: missing pieces (some features may not work):', missing);
-}
-</script>
-<!-- ======= END PART 3E ======= -->
-<!-- ======= PART 3F: Initialization & Auto-Sync ======= -->
-<script>
-/* =========================
-   FINAL INIT / AUTO-SYNC
-   - init(): wires login, dashboard, PDF export, and local storage
-   - sets auto-refresh interval for data every 5 mins
-   - ensures all buttons and sections are live
-   ========================= */
-
-function init() {
-  console.log('SeaCrew Dashboard initializing...');
-
-  // 1. Login wiring
-  const loginBtn = document.getElementById('loginBtn');
-  if(loginBtn) {
-    loginBtn.addEventListener('click', () => {
-      const user = document.getElementById('username').value.trim();
-      const pass = document.getElementById('password').value.trim();
-      if(!user || !pass){ alert('Please enter Username & Password'); return; }
-      login(user, pass);
+  function initializeSidebar() {
+    const sidebarLinks = document.querySelectorAll('.sidebar a');
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = this.getAttribute('data-target');
+        if (target) showSheet(target);
+      });
     });
   }
 
-  // 2. Wire all dashboard sections
-  Object.keys(SECTIONS).forEach(key => {
-    const sec = SECTIONS[key];
-    if(sec.btnId){
-      const btn = document.getElementById(sec.btnId);
-      if(btn) btn.addEventListener('click', ()=> openSection(sec.key));
-    }
-  });
-
-  // 3. PDF export wiring
-  if(typeof wirePDFButtons === 'function') wirePDFButtons();
-
-  // 4. Auto-refresh: fetchAll every 5 mins
-  setInterval(()=>{
-    console.log('Auto-sync: fetching latest data...');
-    fetchAll().then(() => console.log('Data refreshed'));
-  }, 300000); // 300,000ms = 5min
-
-  // 5. Runtime validation
-  if(typeof validateRuntime === 'function') validateRuntime();
-
-  console.log('SeaCrew Dashboard initialized.');
-}
-
-/* =========================
-   STARTUP: call init on DOM ready
-   ========================= */
-document.addEventListener('DOMContentLoaded', init);
+  function fetchAllSheets() {
+    // This will call your Apps Script backend via JS (Parts 3A–3F)
+    console.log("Fetching all sheet data...");
+    // Example: fetchData('Vessel_join'); etc.
+  }
 </script>
-<!-- ======= END PART 3F ======= -->
