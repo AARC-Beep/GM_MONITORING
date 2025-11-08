@@ -378,9 +378,6 @@
   <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 </main>
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
 const SHEET_MAP = {
@@ -391,36 +388,29 @@ const SHEET_MAP = {
   training: "Training",
   pni: "Pni",
   chatBoard: "ChatBoard",
-  users: "Users"
+  users: "Users",
+  archivePrefix: "Archive_"
 };
 
 let currentUser = null;
+let localData = {}; // cache for each section
 
 // ================= LOGIN =================
-function showLogin() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-}
-
-function hideLogin() {
-  document.getElementById('loginOverlay').style.display = 'none';
-}
+function showLogin() { document.getElementById('loginOverlay').style.display='flex'; }
+function hideLogin() { document.getElementById('loginOverlay').style.display='none'; }
 
 function login() {
   const username = document.getElementById('loginUser').value.trim();
   const password = document.getElementById('loginPass').value.trim();
   const msg = document.getElementById('loginMsg');
-
-  if (!username || !password) {
-    msg.innerText = "Enter username and password";
-    return;
-  }
+  if(!username || !password){ msg.innerText="Enter username and password"; return; }
 
   const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
-  jsonp(url, function(res) {
-    if (res.status === "success") {
+  jsonp(url,res=>{
+    if(res.status==="success"){
       currentUser = res.username;
       hideLogin();
-      document.getElementById('logoutBtn').style.display = "inline-block";
+      document.getElementById('logoutBtn').style.display="inline-block";
       startAutoSync();
       loadAllPreviews();
     } else {
@@ -429,110 +419,189 @@ function login() {
   });
 }
 
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('loginBtn').addEventListener('click',login);
+document.getElementById('logoutBtn').addEventListener('click',logout);
 
-function logout() {
+function logout(){
   currentUser = null;
-  document.getElementById('logoutBtn').style.display = "none";
+  document.getElementById('logoutBtn').style.display="none";
   showLogin();
 }
 
 // ================= JSONP HELPER =================
-function jsonp(url, callback) {
-  const cbName = "cb" + Math.floor(Math.random()*100000);
-  window[cbName] = function(res) {
-    callback(res);
-    delete window[cbName];
-    script.remove();
-  };
+function jsonp(url, callback){
+  const cbName="cb"+Math.floor(Math.random()*100000);
+  window[cbName]=function(res){ callback(res); delete window[cbName]; script.remove(); };
   const script = document.createElement('script');
-  script.src = url.replace("callback=callback", `callback=${cbName}`);
+  script.src = url.replace("callback=callback",`callback=${cbName}`);
   document.body.appendChild(script);
 }
 
 // ================= NAVIGATION =================
-function navTo(e, sectionId) {
+function navTo(e, sectionId){
   e.preventDefault();
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
+  document.querySelectorAll('.section').forEach(sec=>sec.style.display='none');
   const el = document.getElementById(sectionId);
-  if(el) el.style.display = 'block';
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  if(el) el.style.display='block';
+  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
   e.currentTarget.classList.add('active');
 }
-
 function navToElement(sectionId){
-  document.querySelectorAll('.section').forEach(sec => sec.style.display='none');
+  document.querySelectorAll('.section').forEach(sec=>sec.style.display='none');
   const el = document.getElementById(sectionId);
   if(el) el.style.display='block';
 }
 
 // ================= FETCH / PREVIEWS =================
-function loadAllPreviews() {
-  Object.keys(SHEET_MAP).forEach(sec => {
-    if(sec !== 'users' && sec !== 'chatBoard') {
-      fetchSheet(sec, data => renderPreview(sec, data));
+function loadAllPreviews(){
+  Object.keys(SHEET_MAP).forEach(sec=>{
+    if(sec!=='users' && sec!=='chatBoard'){
+      fetchSheet(sec,data=>{
+        localData[sec]=data;
+        renderPreview(sec,data);
+      });
     }
   });
 }
 
-function fetchSheet(section, callback) {
+function fetchSheet(section, callback){
   const sheet = SHEET_MAP[section];
   const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
-  jsonp(url, function(res){
-    if(res.success) callback(res.data);
-    else callback([]);
-  });
+  jsonp(url,res=>{ callback(res.success?res.data:[]); });
 }
 
-function renderPreview(section, data) {
-  let containerId = '';
-  let countId = '';
-  switch(section){
-    case 'vesselJoin': containerId='vesselPreviewSmall'; countId='countVessel'; break;
-    case 'arrivingCrew': containerId='arrivalsPreviewSmall'; countId='countArrivals'; break;
-    case 'dailyUpdates': containerId='updatesPreviewSmall'; countId='countUpdates'; break;
-    case 'memo': containerId='memoPreviewSmall'; countId='countMemo'; break;
-    case 'training': containerId='trainingPreviewSmall'; countId='countTraining'; break;
-    case 'pni': containerId='pniPreviewSmall'; countId='countPNI'; break;
-  }
+// ================= RENDER PREVIEW WITH EDIT/DELETE =================
+function renderPreview(section, data){
+  const containerMap={
+    vesselJoin:'vesselPreviewSmall',
+    arrivingCrew:'arrivalsPreviewSmall',
+    dailyUpdates:'updatesPreviewSmall',
+    memo:'memoPreviewSmall',
+    training:'trainingPreviewSmall',
+    pni:'pniPreviewSmall'
+  };
+  const countMap={
+    vesselJoin:'countVessel',
+    arrivingCrew:'countArrivals',
+    dailyUpdates:'countUpdates',
+    memo:'countMemo',
+    training:'countTraining',
+    pni:'countPNI'
+  };
+  const containerId = containerMap[section];
+  const countId = countMap[section];
   if(!containerId) return;
+
   const container = document.getElementById(containerId);
   const countEl = document.getElementById(countId);
   container.innerHTML = '';
-  if(data.length === 0) container.innerHTML = '<small>No entries</small>';
-  else {
-    data.slice(-5).forEach(row => {
-      const div = document.createElement('div');
-      div.className = 'row-entry';
-      div.innerHTML = `<div class="left">${Object.values(row).join(' | ')}</div>`;
-      container.appendChild(div);
+  if(!data || data.length===0){ container.innerHTML='<small>No entries</small>'; if(countEl) countEl.innerText='0'; return; }
+
+  data.slice(-5).forEach(row=>{
+    const div = document.createElement('div');
+    div.className='row-entry';
+    const rowHtml = Object.keys(row).filter(k=>k!=='archived' && k!=='uid').map(k=>{
+      return `<input type="text" class="edit-field" data-key="${k}" value="${row[k]}"/>`;
+    }).join(' | ');
+    div.innerHTML = `
+      <div class="left">${rowHtml}</div>
+      <div class="right">
+        <button class="btn btn-sm btn-primary editBtn">Save</button>
+        <button class="btn btn-sm btn-danger delBtn">Delete</button>
+      </div>
+    `;
+    div.querySelector('.editBtn').addEventListener('click',()=>{
+      if(!currentUser) return alert("Login required");
+      const values={};
+      div.querySelectorAll('.edit-field').forEach(inp=>values[inp.dataset.key]=inp.value);
+      updateEntry(section,row.uid,values);
+    });
+    div.querySelector('.delBtn').addEventListener('click',()=>{
+      if(!currentUser) return alert("Login required");
+      deleteEntry(section,row.uid);
+    });
+    container.appendChild(div);
+  });
+  if(countEl) countEl.innerText=data.length;
+}
+
+// ================= UPDATE / DELETE =================
+function updateEntry(section, uid, values){
+  const sheet = SHEET_MAP[section];
+  const url = `${SCRIPT_URL}?action=update_uid&sheet=${sheet}&uid=${uid}&data=${encodeURIComponent(JSON.stringify(values))}&callback=callback`;
+  jsonp(url,res=>{
+    if(res.success){ loadAllPreviews(); alert("Updated"); }
+    else alert("Update failed");
+  });
+}
+
+function deleteEntry(section, uid){
+  const sheet = SHEET_MAP[section];
+  const archiveSheet = SHEET_MAP.archivePrefix + sheet;
+  if(confirm("Delete this entry? It will be archived.")){
+    const url = `${SCRIPT_URL}?action=archive_uid&sheet=${sheet}&archiveSheet=${archiveSheet}&uid=${uid}&callback=callback`;
+    jsonp(url,res=>{
+      if(res.success){ loadAllPreviews(); alert("Archived"); }
+      else alert("Delete failed");
     });
   }
-  if(countEl) countEl.innerText = data.length;
 }
 
 // ================= AUTO-SYNC =================
-let syncInterval = null;
-function startAutoSync() {
-  if(syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(loadAllPreviews, 15000);
-}
-
-function manualSync() { loadAllPreviews(); }
+let syncInterval=null;
+function startAutoSync(){ if(syncInterval) clearInterval(syncInterval); syncInterval=setInterval(loadAllPreviews,15000);}
+function manualSync(){ loadAllPreviews(); }
 
 // ================= STICKY NOTE =================
-function saveSticky() {
+function saveSticky(){
   const val = document.getElementById('stickyNote').value;
-  localStorage.setItem('stickyNote', val);
+  localStorage.setItem('stickyNote',val);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Load sticky note
-  const saved = localStorage.getItem('stickyNote');
-  if(saved) document.getElementById('stickyNote').value = saved;
+// ================= PDF EXPORT =================
+function printSectionPDF(section, filename, includeArchived=true){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  const data = [...(localData[section]||[])];
+  if(!includeArchived) data = data.filter(r=>!r.archived);
+  if(data.length===0){ alert("No data to export"); return; }
 
-  // Show login
+  const columns = Object.keys(data[0]).filter(k=>k!=='archived');
+  const rows = data.map(r=>columns.map(c=>r[c]));
+
+  doc.autoTable({ head:[columns], body:rows, styles:{fontSize:8} });
+  doc.save(`${filename}.pdf`);
+}
+
+// ================= JSONP CHATBOARD =================
+document.getElementById('chatSendBtn')?.addEventListener('click',()=>{
+  if(!currentUser) return alert("Login required");
+  const name = document.getElementById('chatName').value.trim()||'Anonymous';
+  const msg = document.getElementById('chatMsg').value.trim();
+  if(!msg) return;
+  const sheet = SHEET_MAP.chatBoard;
+  const url = `${SCRIPT_URL}?action=append_uid&sheet=${sheet}&data=${encodeURIComponent(JSON.stringify({name,msg,date:new Date().toISOString()}))}&callback=callback`;
+  jsonp(url,res=>{
+    if(res.success){ document.getElementById('chatMsg').value=''; fetchSheet('chatBoard',renderChatBoard); }
+  });
+});
+
+function renderChatBoard(data){
+  const log = document.getElementById('chatLog');
+  log.innerHTML='';
+  if(!data || data.length===0){ log.innerHTML='<small>No messages</small>'; return; }
+  data.slice(-20).forEach(d=>{
+    const div = document.createElement('div');
+    div.innerHTML=`<strong>${d.name}</strong> (${new Date(d.date).toLocaleString()}): ${d.msg}`;
+    log.appendChild(div);
+  });
+  log.scrollTop=log.scrollHeight;
+}
+
+// ================= ONLOAD =================
+document.addEventListener('DOMContentLoaded',()=>{
+  const saved = localStorage.getItem('stickyNote');
+  if(saved) document.getElementById('stickyNote').value=saved;
   showLogin();
 });
 </script>
