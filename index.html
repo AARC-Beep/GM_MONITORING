@@ -1,538 +1,155 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SeaCrew Dashboard — Daily Routine Log</title>
-
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <!-- jsPDF + AutoTable (for PDF export) -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <style>
-    :root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
-    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
-    .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
-    .sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
-    .sidebar a { display:block; color:#cfe8ff; padding:10px 12px; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:500; }
-    .sidebar a:hover { background: rgba(255,255,255,0.05); color:#fff; text-decoration:none; }
-    .sidebar a.active { background:#072033; color:#fff; }
-    .content { margin-left: calc(var(--sidebar-width) + 28px); padding:24px; min-height:100vh; }
-    .card-slim { padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(9,30,66,0.06); background:#fff; margin-bottom:16px; }
-    .small-note { font-size:0.9rem; color:#666; }
-    .preview-table { max-height:200px; overflow:auto; padding:8px; background:#fafbff; border-radius:8px; border:1px solid #eef3fb;}
-    .entry-card { border:1px solid #e9eef6; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:#fff; }
-    .entry-meta { color:#444; font-size:0.95rem; }
-    .form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .form-row .form-control { min-width:140px; }
-    .entry-actions button { margin-left:6px; }
-    .fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
-
-    /* layout for list rows */
-    .row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
-    .row-entry .left { flex:1; }
-    .row-entry .right { display:flex; gap:8px; align-items:center; }
-
-    /* Chatboard */
-    .chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
-    .chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
-    .chat-inputs { display:flex; gap:8px; align-items:center; }
-
-    /* responsive */
-    @media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
-    @media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
-
-    /* some small helpers */
-    .btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
-    .badge-synced { font-size:0.75rem; color:#0b6; margin-left:6px; }
-    .login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; }
-    .login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeaCrew Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<style>
+body { display: flex; min-height: 100vh; margin: 0; }
+.sidebar { width: 220px; background: #343a40; color: white; }
+.sidebar a { display: block; padding: 10px 15px; color: white; text-decoration: none; }
+.sidebar a:hover { background: #495057; }
+.main { flex: 1; padding: 20px; }
+</style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
-<div id="loginOverlay" class="login-overlay" style="display:none">
-  <div class="login-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 style="margin:0">TIWALA — SeaCrew Login</h5>
-      <img src="" alt="" style="width:36px;opacity:.4"/>
-    </div>
-    <div>
-      <div class="mb-2"><input id="loginUser" class="form-control" placeholder="Username"></div>
-      <div class="mb-2"><input id="loginPass" type="password" class="form-control" placeholder="Password"></div>
-      <div class="d-flex justify-content-between align-items-center">
-        <div><input type="checkbox" id="saveCred"> <label for="saveCred">Remember (local only)</label></div>
-        <div><button id="loginBtn" class="btn btn-primary">Sign in</button></div>
-      </div>
-      <div class="mt-2 small-note" id="loginMsg"></div>
-    </div>
-  </div>
+<div class="sidebar">
+    <h4 class="text-center py-3">SeaCrew</h4>
+    <a href="#" data-sheet="Vessel_Join">Vessel Join</a>
+    <a href="#" data-sheet="Arrivals">Arrivals</a>
+    <a href="#" data-sheet="Updates">Updates</a>
+    <a href="#" data-sheet="Memo">Memo</a>
+    <a href="#" data-sheet="Training">Training</a>
+    <a href="#" data-sheet="Pni">Pni</a>
+    <a href="#" data-sheet="ChatBoard">ChatBoard</a>
+    <a href="#" data-sheet="Users">Users</a>
+    <hr>
+    <a href="https://flightaware.com" target="_blank">FlightAware</a>
+    <a href="https://weather.com" target="_blank">Weather</a>
+    <a href="https://dmw.gov" target="_blank">DMW</a>
+    <a href="https://marina.gov.ph" target="_blank">Marina</a>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar" aria-label="Main navigation">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY ROUTINE LOG</h4>
-
-  <a href="#" class="active" data-target="dashboard" onclick="navTo(event,'dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-  <a href="#" data-target="vesselJoin" onclick="navTo(event,'vesselJoin')"><i class="fa-solid fa-ship"></i> Vessel Crew Joining</a>
-  <a href="#" data-target="arrivingCrew" onclick="navTo(event,'arrivingCrew')"><i class="fa-solid fa-plane-departure"></i> Arriving Crew</a>
-  <a href="#" data-target="dailyUpdates" onclick="navTo(event,'dailyUpdates')"><i class="fa-regular fa-calendar-days"></i> Daily Updates</a>
-  <a href="#" data-target="memo" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
-  <a href="#" data-target="training" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
-  <a href="#" data-target="pni" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&amp;I / Events</a>
-  <a href="#" data-target="helpSection" onclick="navTo(event,'helpSection')"><i class="fa-solid fa-circle-info"></i> Help / User Guide</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-
-  <!-- External links requested -->
-  <div style="margin-top:6px">
-    <div class="small-note" style="color:#cfe8ff;margin-bottom:6px">Useful Tools</div>
-    <a href="https://flightaware.com/live/airport/RPLL" target="_blank" rel="noopener"><i class="fa-solid fa-plane"></i> Flights — FlightAware (MNL)</a>
-    <a href="https://www.msn.com/en-ph/news" target="_blank" rel="noopener"><i class="fa-solid fa-newspaper"></i> News — MSN Philippines</a>
-    <a href="https://zoom.earth/" target="_blank" rel="noopener"><i class="fa-solid fa-cloud-sun"></i> Weather — Zoom Earth</a>
-    <a href="https://dmw.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-passport"></i> DMW — Dept. of Migrant Workers</a>
-    <a href="https://owwa.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> OWWA</a>
-    <a href="https://marina.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-anchor"></i> MARINA</a>
-  </div>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-  <div class="small-note">Tip: Dashboard auto-syncs every 15s. If offline, entries save locally and will sync when online.</div>
-</nav>
-
-<!-- Main content -->
-<main class="content" role="main">
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h2 style="margin:0">SeaCrew Dashboard</h2>
-      <div class="small-note">Connected to Google Apps Script web app: <strong>DAILY ROUTINE LOG</strong></div>
+<div class="main">
+    <h3>Login</h3>
+    <div class="mb-3">
+        <input type="text" id="username" class="form-control" placeholder="Username">
     </div>
-
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="manualSync()"><i class="fa-solid fa-arrows-rotate"></i> Sync now</button>
-      <button class="btn btn-outline-danger" onclick="clearAllLocal()"><i class="fa-solid fa-trash-can"></i> Clear local</button>
-      <button class="btn btn-primary" onclick="printSectionPDF('dashboard','SeaCrew_Monthly_Report',true)"><i class="fa-solid fa-file-pdf"></i> Monthly PDF</button>
-      <button class="btn btn-outline-info" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+    <div class="mb-3">
+        <input type="password" id="password" class="form-control" placeholder="Password">
     </div>
-  </div>
+    <button id="loginbtn" class="btn btn-primary mb-3">Login</button>
 
-  <!-- DASHBOARD (previews + chatboard) -->
-  <section id="dashboard" class="section active">
-    <div class="row g-3">
-      <!-- Previews columns -->
-      <div class="col-md-8">
-        <div class="card-slim">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 style="margin:0">Quick Overview</h5>
-            <div><small class="small-note">Last sync: <span id="lastSync">—</span></small></div>
-          </div>
-
-          <div class="row g-3 mt-3">
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Vessel Joining <small class="small-note">(<span id="countVessel">0</span>)</small></h6>
-                <div class="preview-table" id="vesselPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('vesselJoin')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Arrivals <small class="small-note">(<span id="countArrivals">0</span>)</small></h6>
-                <div class="preview-table" id="arrivalsPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('arrivingCrew')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Updates <small class="small-note">(<span id="countUpdates">0</span>)</small></h6>
-                <div class="preview-table" id="updatesPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('dailyUpdates')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Memo <small class="small-note">(<span id="countMemo">0</span>)</small></h6>
-                <div class="preview-table" id="memoPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('memo')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Training <small class="small-note">(<span id="countTraining">0</span>)</small></h6>
-                <div class="preview-table" id="trainingPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('training')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>P&amp;I <small class="small-note">(<span id="countPNI">0</span>)</small></h6>
-                <div class="preview-table" id="pniPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('pni')">Open</button></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatboard / Sticky -->
-      <div class="col-md-4">
-        <div class="card-slim">
-          <h6>ChatBoard (public view)</h6>
-          <div class="chatboard">
-            <div class="chat-log" id="chatLog"></div>
-            <div class="chat-inputs">
-              <input id="chatName" class="form-control" placeholder="Your name (visible)" value="Captain" />
-              <input id="chatMsg" class="form-control" placeholder="Message" />
-              <button class="btn btn-primary" id="chatSendBtn">Send</button>
-            </div>
-            <small class="small-note">Only messages posted here are saved to the ChatBoard sheet.</small>
-          </div>
-        </div>
-
-        <div class="card-slim mt-3">
-          <h6>Sticky / Quick Note</h6>
-          <textarea id="stickyNote" class="form-control" rows="6" placeholder="Quick note — saved locally only"></textarea>
-          <div class="d-flex justify-content-end mt-2">
-            <button class="btn btn-outline-secondary me-2" onclick="localStorage.removeItem('stickyNote'); document.getElementById('stickyNote').value='';">Clear</button>
-            <button class="btn btn-primary" onclick="saveSticky()">Save</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- Sections: Vessel Join / Arrivals / Updates / Memo / Training / PNI ---------- -->
-  <!-- Vessel Join -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Vessel Crew Joining</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="vjVessel">
-        <input class="form-control" placeholder="Port" id="vjPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
-        <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
-        <input class="form-control" placeholder="Flight" id="vjFlight">
-        <button class="btn btn-success" id="vjAddBtn">Add</button>
-        <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="vj_list" class="card-slim"></div>
-  </section>
-
-  <!-- Arriving Crew -->
-  <section id="arrivingCrew" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Arriving Crew</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('arrivingCrew','Arrivals')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('arrivingCrew')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="acVessel">
-        <input class="form-control" placeholder="Port" id="acPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="acNo">
-        <input class="form-control" placeholder="Rank" id="acRank">
-        <input class="form-control" placeholder="Arrival Date" type="date" id="acDate">
-        <input class="form-control" placeholder="Flight" id="acFlight">
-        <button class="btn btn-success" id="acAddBtn">Add</button>
-        <button class="btn btn-secondary" id="acResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="ac_list" class="card-slim"></div>
-  </section>
-
-  <!-- Daily Updates -->
-  <section id="dailyUpdates" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Daily Updates</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('dailyUpdates','Daily_Updates')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('dailyUpdates')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="duTitle">
-        <input class="form-control" placeholder="Details" id="duDetails">
-        <input class="form-control" type="date" id="duDate">
-        <button class="btn btn-success" id="duAddBtn">Add</button>
-        <button class="btn btn-secondary" id="duResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="du_list" class="card-slim"></div>
-  </section>
-
-  <!-- Memo -->
-  <section id="memo" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Memo</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('memo','Memo')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('memo')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="mTitle">
-        <input class="form-control" placeholder="Details" id="mDetails">
-        <input class="form-control" type="date" id="mDate">
-        <button class="btn btn-success" id="mAddBtn">Add</button>
-        <button class="btn btn-secondary" id="mResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="m_list" class="card-slim"></div>
-  </section>
-
-  <!-- Training -->
-  <section id="training" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Training</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('training','Training')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('training')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="tSubject">
-        <input class="form-control" placeholder="Details" id="tDetails">
-        <input class="form-control" type="date" id="tDate">
-        <button class="btn btn-success" id="tAddBtn">Add</button>
-        <button class="btn btn-secondary" id="tResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="t_list" class="card-slim"></div>
-  </section>
-
-  <!-- PnI -->
-  <section id="pni" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>P&amp;I / Events</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="pSubject">
-        <input class="form-control" placeholder="Details" id="pDetails">
-        <input class="form-control" type="date" id="pDate">
-        <button class="btn btn-success" id="pAddBtn">Add</button>
-        <button class="btn btn-secondary" id="pResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="p_list" class="card-slim"></div>
-  </section>
-
-  <!-- HELP / USER GUIDE -->
-  <section id="helpSection" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>User Guide / Help</h4>
-      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('helpSection','User_Guide')">Export PDF</button>
-    </div>
-
-    <div class="card-slim" style="font-size:14px; line-height:1.5">
-      <h5>SeaCrew Dashboard — Daily Routine Log (User Guide)</h5>
-      <ol>
-        <li>Login using your Username and Password (from Users sheet).</li>
-        <li>Use the sidebar to navigate sections. Add entries in the form at the top of each section.</li>
-        <li>To edit an entry, click the edit (pencil) icon — the form will populate. Update then press "Update".</li>
-        <li>To delete an entry, click the trash icon and confirm. Deleted entries are removed from the sheet.</li>
-        <li>ChatBoard posts a message to the ChatBoard sheet (sound and visual alert when new messages arrive).</li>
-        <li>Press "Sync now" to manually sync. Auto-sync occurs every 15 seconds.</li>
-        <li>Monthly PDF generates consolidated report (landscape, font-size 8) and includes a GM signature page.</li>
-      </ol>
-      <p class="small-note">If you want deletions to be archived (not permanently removed), ask me and I'll implement an "Archive" sheet behavior instead of deleting rows.</p>
-    </div>
-  </section>
-
-  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
-</main>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <h4>Sheet Data</h4>
+    <div id="dataContainer"></div>
+</div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_rEHqI_e8c5C6_fYVZlnvLDE5FuCasSlBl0BVgkex1Hm-HrWnU21KYkIblNf8tcV8/exec";
-const SHEET_MAP = {
-  vesselJoin: "Vessel_join",
-  arrivingCrew: "Arrivals",
-  dailyUpdates: "Updates",
-  memo: "Memo",
-  training: "Training",
-  pni: "Pni",
-  chatBoard: "ChatBoard",
-  users: "Users"
-};
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_rEHqI_e8c5C6_fYVZlnvLDE5FuCasSlBl0BVgkex1Hm-HrWnU21KYkIblNf8tcV8/exec"; // Replace with your GAS Web App URL
 
-let currentUser = null;
-
-// ================= LOGIN =================
-function showLogin() {
-  document.getElementById('loginOverlay').style.display = 'flex';
-}
-
-function hideLogin() {
-  document.getElementById('loginOverlay').style.display = 'none';
-}
-
-function login() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
-  const msg = document.getElementById('loginMsg');
-
-  if (!username || !password) {
-    msg.innerText = "Enter username and password";
-    return;
-  }
-
-  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
-  jsonp(url, function(res) {
-    if (res.status === "success") {
-      currentUser = res.username;
-      hideLogin();
-      document.getElementById('logoutBtn').style.display = "inline-block";
-      startAutoSync();
-      loadAllPreviews();
-    } else {
-      msg.innerText = res.message || "Login failed";
+// -------------------------------
+// Safe JSON parse
+// -------------------------------
+function safeJSONParse(rawData) {
+    try {
+        const jsonMatch = rawData.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found");
+        return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+        console.error("JSON parse failed:", err, rawData);
+        return null;
     }
-  });
 }
 
-document.getElementById('loginBtn').addEventListener('click', login);
-document.getElementById('logoutBtn').addEventListener('click', logout);
+// -------------------------------
+// Login
+// -------------------------------
+document.getElementById("loginbtn")?.addEventListener("click", async () => {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    if (!username || !password) return alert("Enter username and password");
 
-function logout() {
-  currentUser = null;
-  document.getElementById('logoutBtn').style.display = "none";
-  showLogin();
-}
-
-// ================= JSONP HELPER =================
-function jsonp(url, callback) {
-  const cbName = "cb" + Math.floor(Math.random()*100000);
-  window[cbName] = function(res) {
-    callback(res);
-    delete window[cbName];
-    script.remove();
-  };
-  const script = document.createElement('script');
-  script.src = url.replace("callback=callback", `callback=${cbName}`);
-  document.body.appendChild(script);
-}
-
-// ================= NAVIGATION =================
-function navTo(e, sectionId) {
-  e.preventDefault();
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
-  const el = document.getElementById(sectionId);
-  if(el) el.style.display = 'block';
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-  e.currentTarget.classList.add('active');
-}
-
-function navToElement(sectionId){
-  document.querySelectorAll('.section').forEach(sec => sec.style.display='none');
-  const el = document.getElementById(sectionId);
-  if(el) el.style.display='block';
-}
-
-// ================= FETCH / PREVIEWS =================
-function loadAllPreviews() {
-  Object.keys(SHEET_MAP).forEach(sec => {
-    if(sec !== 'users' && sec !== 'chatBoard') {
-      fetchSheet(sec, data => renderPreview(sec, data));
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+        const data = safeJSONParse(await response.text());
+        if (data?.status === "ok") {
+            alert(`Login successful! Role: ${data.role}`);
+        } else {
+            alert(data?.message || "Login failed");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Login request failed");
     }
-  });
+});
+
+// -------------------------------
+// Fetch all rows
+// -------------------------------
+async function fetchAll(sheetName) {
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=fetchAll&sheet=${sheetName}`);
+        const data = safeJSONParse(await response.text());
+        return data?.data || [];
+    } catch (err) {
+        console.error(err);
+        return [];
+    }
 }
 
-function fetchSheet(section, callback) {
-  const sheet = SHEET_MAP[section];
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
-  jsonp(url, function(res){
-    if(res.success) callback(res.data);
-    else callback([]);
-  });
+// -------------------------------
+// Append, Update, Delete
+// -------------------------------
+async function appendData(sheetName, record) {
+    const params = new URLSearchParams({ action:"append", sheet:sheetName, record:JSON.stringify(record) });
+    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const data = safeJSONParse(await response.text());
+    return data?.status === "ok";
 }
 
-function renderPreview(section, data) {
-  let containerId = '';
-  let countId = '';
-  switch(section){
-    case 'vesselJoin': containerId='vesselPreviewSmall'; countId='countVessel'; break;
-    case 'arrivingCrew': containerId='arrivalsPreviewSmall'; countId='countArrivals'; break;
-    case 'dailyUpdates': containerId='updatesPreviewSmall'; countId='countUpdates'; break;
-    case 'memo': containerId='memoPreviewSmall'; countId='countMemo'; break;
-    case 'training': containerId='trainingPreviewSmall'; countId='countTraining'; break;
-    case 'pni': containerId='pniPreviewSmall'; countId='countPNI'; break;
-  }
-  if(!containerId) return;
-  const container = document.getElementById(containerId);
-  const countEl = document.getElementById(countId);
-  container.innerHTML = '';
-  if(data.length === 0) container.innerHTML = '<small>No entries</small>';
-  else {
-    data.slice(-5).forEach(row => {
-      const div = document.createElement('div');
-      div.className = 'row-entry';
-      div.innerHTML = `<div class="left">${Object.values(row).join(' | ')}</div>`;
-      container.appendChild(div);
+async function updateData(sheetName, uid, record) {
+    const params = new URLSearchParams({ action:"update", sheet:sheetName, uid, record:JSON.stringify(record) });
+    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const data = safeJSONParse(await response.text());
+    return data?.status === "ok";
+}
+
+async function deleteData(sheetName, uid) {
+    const params = new URLSearchParams({ action:"delete", sheet:sheetName, uid });
+    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+    const data = safeJSONParse(await response.text());
+    return data?.status === "ok";
+}
+
+// -------------------------------
+// Handle sidebar clicks
+// -------------------------------
+document.querySelectorAll(".sidebar a[data-sheet]").forEach(link => {
+    link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const sheet = link.getAttribute("data-sheet");
+        const rows = await fetchAll(sheet);
+        const container = document.getElementById("dataContainer");
+        if (rows.length === 0) {
+            container.innerHTML = "<p>No data found.</p>";
+            return;
+        }
+        let html = `<table class="table table-bordered"><thead><tr>`;
+        Object.keys(rows[0]).forEach(h => html += `<th>${h}</th>`);
+        html += `</tr></thead><tbody>`;
+        rows.forEach(r => {
+            html += "<tr>";
+            Object.values(r).forEach(v => html += `<td>${v}</td>`);
+            html += "</tr>";
+        });
+        html += "</tbody></table>`;
+        container.innerHTML = html;
     });
-  }
-  if(countEl) countEl.innerText = data.length;
-}
-
-// ================= AUTO-SYNC =================
-let syncInterval = null;
-function startAutoSync() {
-  if(syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(loadAllPreviews, 15000);
-}
-
-function manualSync() { loadAllPreviews(); }
-
-// ================= STICKY NOTE =================
-function saveSticky() {
-  const val = document.getElementById('stickyNote').value;
-  localStorage.setItem('stickyNote', val);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  // Load sticky note
-  const saved = localStorage.getItem('stickyNote');
-  if(saved) document.getElementById('stickyNote').value = saved;
-
-  // Show login
-  showLogin();
 });
 </script>
+
+</body>
+</html>
