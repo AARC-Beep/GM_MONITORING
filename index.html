@@ -133,95 +133,145 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
   <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 </main>
 
-<script>
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw_rEHqI_e8c5C6_fYVZlnvLDE5FuCasSlBl0BVgkex1Hm-HrWnU21KYkIblNf8tcV8/exec"; // <-- replace with your deployed GAS URL
+/* ============================================================
+   GM_MONITORING.js — Safe Full Dashboard JS
+   Supports: login, fetchAll, append, update, delete (UID-based)
+   Tabs: Vessel_Join, Arrivals, Updates, Memo, Training, Pni, ChatBoard, Users
+=============================================================== */
 
-// ---------------- LOGIN ----------------
-const loginOverlay = document.getElementById("loginOverlay");
-const sidebar = document.querySelector(".sidebar");
-const mainContent = document.querySelector(".content");
-const loginMsg = document.getElementById("loginMsg");
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_rEHqI_e8c5C6_fYVZlnvLDE5FuCasSlBl0BVgkex1Hm-HrWnU21KYkIblNf8tcV8/exec"; // Replace with your GAS URL
 
-document.getElementById("loginBtn").addEventListener("click", async ()=>{
-  const username = document.getElementById("loginUser").value;
-  const password = document.getElementById("loginPass").value;
-
-  try {
-    const res = await fetch(`${GAS_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=cb`);
-    const text = await res.text();
-    const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
-
-    if(data.status==="success"){
-      loginOverlay.style.display="none";
-      sidebar.style.display="block";
-      mainContent.style.display="block";
-      loadAllSections();
-    } else loginMsg.textContent = data.message;
-  } catch(e){ loginMsg.textContent = "Login failed"; console.error(e); }
-});
-
-// ---------------- NAVIGATION ----------------
-document.querySelectorAll(".sidebar a[data-target]").forEach(a=>{
-  a.addEventListener("click", e=>{
-    e.preventDefault();
-    const target = a.getAttribute("data-target");
-    document.querySelectorAll(".section").forEach(s=>s.style.display="none");
-    document.getElementById(target).style.display="block";
-    document.querySelectorAll(".sidebar a").forEach(link=>link.classList.remove("active"));
-    a.classList.add("active");
-  });
-});
-
-// ---------------- CHAT ----------------
-const chatLog = document.getElementById("chatLog");
-document.getElementById("chatSendBtn").addEventListener("click", async ()=>{
-  const name = document.getElementById("chatName").value || "Captain";
-  const msg = document.getElementById("chatMsg").value;
-  if(!msg) return;
-  try{
-    await fetch(`${GAS_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(JSON.stringify([Date.now(),name,msg]))}&callback=cb`);
-    document.getElementById("chatMsg").value="";
-    loadChatBoard();
-  }catch(e){ console.error(e); }
-});
-
-async function loadChatBoard(){
-  try{
-    const res = await fetch(`${GAS_URL}?action=fetch&sheet=ChatBoard&callback=cb`);
-    const text = await res.text();
-    const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
-    if(data.status==="success"){
-      chatLog.innerHTML = data.data.map(r=>`<div><b>${r[1]}</b>: ${r[2]}</div>`).join("");
-      chatLog.scrollTop = chatLog.scrollHeight;
+// -------------------------------
+// Utility: Safe JSON parse
+// -------------------------------
+function safeJSONParse(rawData) {
+    try {
+        const jsonMatch = rawData.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found in response");
+        return JSON.parse(jsonMatch[0]);
+    } catch (err) {
+        console.error("Failed to parse JSON:", err, "Raw data:", rawData);
+        return null;
     }
-  }catch(e){ console.error(e); }
 }
 
-// ---------------- FETCH / INIT SECTIONS ----------------
-async function loadAllSections(){
-  const sections = ["vesselJoin","arrivingCrew","dailyUpdates","memo","training","pni"];
-  for(const s of sections){
-    try{
-      const res = await fetch(`${GAS_URL}?action=fetch&sheet=${s}&callback=cb`);
-      const text = await res.text();
-      const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
-      if(data.status==="success"){
-        // populate preview table or form list
-        console.log(`Loaded ${s}`,data.data);
-      }
-    }catch(e){ console.error(e); }
-  }
-  loadChatBoard();
-}
+// -------------------------------
+// Login handler
+// -------------------------------
+document.getElementById("loginbtn")?.addEventListener("click", async function () {
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-// ---------------- PDF ----------------
-document.getElementById("pdfBtn").addEventListener("click", ()=>{
-  // for simplicity, just export the overview section
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:"landscape" });
-  doc.text("SeaCrew Monthly Report",10,10);
-  doc.save("SeaCrew_Monthly_Report.pdf");
+    if (!username || !password) {
+        alert("Please enter username and password.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+        const rawText = await response.text();
+        const data = safeJSONParse(rawText);
+
+        if (data && data.status === "ok") {
+            console.log("Login successful:", data);
+            alert("Login successful!");
+            // TODO: redirect or show dashboard
+        } else {
+            console.warn("Login failed:", data);
+            alert("Login failed! Check username/password.");
+        }
+    } catch (err) {
+        console.error("Login request failed:", err);
+        alert("Login request failed. Check console.");
+    }
 });
+
+// -------------------------------
+// Fetch all data from a sheet
+// -------------------------------
+async function fetchAll(sheetName) {
+    try {
+        const response = await fetch(`${SCRIPT_URL}?action=fetchAll&sheet=${sheetName}`);
+        const rawText = await response.text();
+        const data = safeJSONParse(rawText);
+        return data || [];
+    } catch (err) {
+        console.error(`FetchAll failed for ${sheetName}:`, err);
+        return [];
+    }
+}
+
+// -------------------------------
+// Append new record
+// -------------------------------
+async function appendData(sheetName, record) {
+    try {
+        const params = new URLSearchParams({ action: "append", sheet: sheetName, record: JSON.stringify(record) });
+        const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+        const rawText = await response.text();
+        const data = safeJSONParse(rawText);
+        if (data && data.status === "ok") return true;
+        console.warn("Append failed:", data);
+        return false;
+    } catch (err) {
+        console.error("Append request failed:", err);
+        return false;
+    }
+}
+
+// -------------------------------
+// Update record by UID
+// -------------------------------
+async function updateData(sheetName, uid, updatedRecord) {
+    try {
+        const params = new URLSearchParams({
+            action: "update",
+            sheet: sheetName,
+            uid,
+            record: JSON.stringify(updatedRecord)
+        });
+        const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+        const rawText = await response.text();
+        const data = safeJSONParse(rawText);
+        if (data && data.status === "ok") return true;
+        console.warn("Update failed:", data);
+        return false;
+    } catch (err) {
+        console.error("Update request failed:", err);
+        return false;
+    }
+}
+
+// -------------------------------
+// Delete record by UID
+// -------------------------------
+async function deleteData(sheetName, uid) {
+    try {
+        const params = new URLSearchParams({ action: "delete", sheet: sheetName, uid });
+        const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+        const rawText = await response.text();
+        const data = safeJSONParse(rawText);
+        if (data && data.status === "ok") return true;
+        console.warn("Delete failed:", data);
+        return false;
+    } catch (err) {
+        console.error("Delete request failed:", err);
+        return false;
+    }
+}
+
+// -------------------------------
+// Example usage: Fetch and log all vessels
+// -------------------------------
+async function initDashboard() {
+    const vessels = await fetchAll("Vessel_Join");
+    console.log("Vessels:", vessels);
+    // TODO: Render data in table/UI
+}
+
+// Initialize dashboard on page load
+window.addEventListener("DOMContentLoaded", initDashboard);
+
 </script>
 </body>
 </html>
