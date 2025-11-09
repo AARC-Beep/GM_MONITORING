@@ -416,259 +416,174 @@ function pdfCallback(resp) {
 function clearAllLocal() {
   localStorage.clear();
 }
-  <script>
-/* ============================================================
-   CONFIG
-=========================================================== */
+<script>
+/* ==================== CONFIG ==================== */
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
-let userInfo = null; // store logged in user info
+let currentUser = null;
+let currentRole = null;
 
-/* ============================================================
-   UTILITY FUNCTIONS
-=========================================================== */
-function navTo(e, sectionId) {
-  e.preventDefault();
+/* ==================== UTILITY ==================== */
+function safeFetch(url, options = {}) {
+  return fetch(url, options)
+    .then(res => res.text())
+    .then(txt => {
+      try { return JSON.parse(txt); }
+      catch(err) { throw new Error("Invalid response from server: " + txt.slice(0,100)); }
+    });
+}
+
+/* ==================== LOGIN ==================== */
+const loginOverlay = document.getElementById('loginOverlay');
+const loginBtn = document.getElementById('loginBtn');
+const loginMsg = document.getElementById('loginMsg');
+
+function showLogin() { loginOverlay.style.display = 'flex'; }
+function hideLogin() { loginOverlay.style.display = 'none'; }
+
+loginBtn.addEventListener('click', () => {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  if (!username || !password) return loginMsg.textContent = "Username & password required.";
+
+  safeFetch(`${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`)
+    .then(res => {
+      if (res.status === "success") {
+        currentUser = res.username;
+        currentRole = res.role;
+        loginMsg.textContent = "";
+        hideLogin();
+        document.getElementById('logoutBtn').style.display = 'inline-block';
+        loadDashboard();
+      } else {
+        loginMsg.textContent = res.message || "Login failed.";
+      }
+    })
+    .catch(err => { loginMsg.textContent = err.message; });
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  currentUser = null;
+  currentRole = null;
+  showLogin();
+  document.getElementById('logoutBtn').style.display = 'none';
+});
+
+/* ==================== NAVIGATION ==================== */
+function navTo(event, sectionId) {
+  event.preventDefault();
   document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
   const el = document.getElementById(sectionId);
   if (el) el.style.display = 'block';
 
-  // update sidebar active link
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const targetLink = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
   if (targetLink) targetLink.classList.add('active');
 }
 
-function navToElement(sectionId) { 
-  const el = document.getElementById(sectionId); 
-  if(el) el.scrollIntoView({behavior:'smooth'}); 
+function navToElement(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (!el) return;
+  document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+  el.style.display = 'block';
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  const link = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
+  if (link) link.classList.add('active');
 }
 
-function showMessage(msg, type='info') {
-  alert(msg); // simple for now, can replace with toast
+/* ==================== FETCH DATA ==================== */
+function loadDashboard() {
+  safeFetch(`${SCRIPT_URL}?action=fetchall&sheets=Vessel_join,Arrivals,Updates,Memo,Training,Pni,ChatBoard`)
+    .then(res => {
+      if (res.status !== "success") throw new Error(res.message || "Fetch failed");
+      const data = res.data;
+      updatePreview('Vessel_join', 'vesselPreviewSmall', 'countVessel');
+      updatePreview('Arrivals', 'arrivalsPreviewSmall', 'countArrivals');
+      updatePreview('Updates', 'updatesPreviewSmall', 'countUpdates');
+      updatePreview('Memo', 'memoPreviewSmall', 'countMemo');
+      updatePreview('Training', 'trainingPreviewSmall', 'countTraining');
+      updatePreview('Pni', 'pniPreviewSmall', 'countPNI');
+      updateChatBoard(data.ChatBoard || []);
+    })
+    .catch(err => console.error(err));
 }
 
-/* ============================================================
-   LOGIN HANDLER
-=========================================================== */
-function showLogin() {
-  document.getElementById('loginOverlay').style.display = 'flex';
+function updatePreview(sheetName, containerId, countId) {
+  safeFetch(`${SCRIPT_URL}?action=fetchall&sheets=${sheetName}`)
+    .then(res => {
+      const rows = res.status==="success"? res.data[sheetName] || [] : [];
+      const container = document.getElementById(containerId);
+      container.innerHTML = rows.map(r => JSON.stringify(r)).join('<br>');
+      if (countId) document.getElementById(countId).textContent = rows.length;
+    })
+    .catch(err => console.error(err));
 }
 
-function hideLogin() {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'inline-block';
+/* ==================== CHATBOARD ==================== */
+const chatLog = document.getElementById('chatLog');
+document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+
+function sendChat() {
+  const name = document.getElementById('chatName').value.trim();
+  const msg = document.getElementById('chatMsg').value.trim();
+  if (!name || !msg) return;
+
+  const row = JSON.stringify([new Date(), name, msg]);
+  safeFetch(`${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(row)}`)
+    .then(res => {
+      if (res.status === "success") {
+        chatLog.innerHTML += `<div><strong>${name}</strong>: ${msg}</div>`;
+        document.getElementById('chatMsg').value = '';
+      }
+    }).catch(err => console.error(err));
 }
 
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const username = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPass').value;
-
-  if(!username || !password) { showMessage("Enter Username and Password"); return; }
-
-  const res = await fetch(`${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`);
-  const txt = await res.text();
-  const data = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
-
-  if(data.status === "success") {
-    userInfo = data;
-    hideLogin();
-    showMessage(`Welcome ${userInfo.username}`);
-    fetchAllSections(); // load initial data
-  } else {
-    showMessage(data.message);
-  }
-});
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  userInfo = null;
-  showLogin();
-  document.getElementById('logoutBtn').style.display = 'none';
-});
-
-/* ============================================================
-   FETCH DATA FROM SHEETS
-=========================================================== */
-async function fetchSheet(sheetName) {
-  const res = await fetch(`${SCRIPT_URL}?action=fetch&sheet=${sheetName}&callback=callback`);
-  const txt = await res.text();
-  const data = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
-  return data.status === "success" ? data.data : [];
-}
-
-async function fetchAllSections() {
-  const sheets = ['Vessel_join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
-  const data = await fetch(`${SCRIPT_URL}?action=fetchall&sheets=${sheets.join(',')}&callback=callback`);
-  const txt = await data.text();
-  const obj = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
-
-  if(obj.status === "success") {
-    updatePreview('vesselJoin', obj.data.Vessel_join || []);
-    updatePreview('arrivingCrew', obj.data.Arrivals || []);
-    updatePreview('dailyUpdates', obj.data.Updates || []);
-    updatePreview('memo', obj.data.Memo || []);
-    updatePreview('training', obj.data.Training || []);
-    updatePreview('pni', obj.data.Pni || []);
-    updateChatBoard(obj.data.ChatBoard || []);
-  }
-}
-
-/* ============================================================
-   PREVIEW TABLE UPDATES
-=========================================================== */
-function updatePreview(section, rows) {
-  const containerMap = {
-    vesselJoin: 'vesselPreviewSmall',
-    arrivingCrew: 'arrivalsPreviewSmall',
-    dailyUpdates: 'updatesPreviewSmall',
-    memo: 'memoPreviewSmall',
-    training: 'trainingPreviewSmall',
-    pni: 'pniPreviewSmall'
-  };
-  const countMap = {
-    vesselJoin: 'countVessel',
-    arrivingCrew: 'countArrivals',
-    dailyUpdates: 'countUpdates',
-    memo: 'countMemo',
-    training: 'countTraining',
-    pni: 'countPNI'
-  };
-
-  const container = document.getElementById(containerMap[section]);
-  if(!container) return;
-
-  container.innerHTML = rows.map(r => {
-    return `<div class="row-entry">
-      <div class="left">${Object.values(r).join(' | ')}</div>
-      <div class="right">
-        <button class="btn btn-sm btn-warning" onclick="editRow('${section}', '${r.UID}')"><i class="fa fa-pencil"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRow('${section}', '${r.UID}')"><i class="fa fa-trash"></i></button>
-      </div>
-    </div>`;
-  }).join('');
-  
-  if(countMap[section]) document.getElementById(countMap[section]).innerText = rows.length;
-}
-
-/* ============================================================
-   CHATBOARD
-=========================================================== */
 function updateChatBoard(rows) {
-  const chatLog = document.getElementById('chatLog');
-  chatLog.innerHTML = rows.map(r => `<div><b>${r.Name}:</b> ${r.Message}</div>`).join('');
-  chatLog.scrollTop = chatLog.scrollHeight;
+  chatLog.innerHTML = rows.map(r => `<div><strong>${r.Name}</strong>: ${r.Message}</div>`).join('');
 }
 
-document.getElementById('chatSendBtn').addEventListener('click', async () => {
-  const name = document.getElementById('chatName').value || 'Anonymous';
-  const msg = document.getElementById('chatMsg').value;
-  if(!msg) return;
-  
-  const row = JSON.stringify([new Date().toLocaleString(), name, msg]);
-  await fetch(`${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(row)}&callback=callback`);
-  document.getElementById('chatMsg').value = '';
-  fetchAllSections();
-});
+/* ==================== ADD / UPDATE / DELETE ==================== */
+function addRow(sheet, values) {
+  const row = JSON.stringify(values);
+  return safeFetch(`${SCRIPT_URL}?action=append_uid&sheet=${sheet}&row=${encodeURIComponent(row)}`);
+}
 
-/* ============================================================
-   ADD / RESET BUTTONS
-=========================================================== */
-function setupAddReset(section, addBtnId, resetBtnId, inputIds, sheetName) {
-  const addBtn = document.getElementById(addBtnId);
-  const resetBtn = document.getElementById(resetBtnId);
+function updateRow(sheet, uid, values) {
+  const row = JSON.stringify(values);
+  return safeFetch(`${SCRIPT_URL}?action=update_uid&sheet=${sheet}&uid=${uid}&row=${encodeURIComponent(row)}`);
+}
 
-  addBtn.addEventListener('click', async () => {
-    const row = inputIds.map(id => document.getElementById(id).value || '');
-    await fetch(`${SCRIPT_URL}?action=append_uid&sheet=${sheetName}&row=${encodeURIComponent(JSON.stringify(row))}&callback=callback`);
-    inputIds.forEach(id => document.getElementById(id).value = '');
-    fetchAllSections();
+function deleteRow(sheet, uid) {
+  return safeFetch(`${SCRIPT_URL}?action=delete_uid&sheet=${sheet}&uid=${uid}`);
+}
+
+/* ==================== PDF EXPORT ==================== */
+function printSectionPDF(sectionId, fileName, includeArchive=false) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+  const container = document.getElementById(sectionId);
+  if (!container) return;
+
+  let text = '';
+  container.querySelectorAll('.preview-table, .card-slim').forEach(el => {
+    if (sectionId === 'dashboard' && !includeArchive) return;
+    text += el.innerText + '\n';
   });
 
-  resetBtn.addEventListener('click', () => inputIds.forEach(id => document.getElementById(id).value=''));
+  doc.setFontSize(8);
+  doc.text(text, 20, 20);
+  doc.save(fileName + '.pdf');
 }
 
-/* ============================================================
-   EDIT / DELETE
-=========================================================== */
-async function deleteRow(section, uid) {
-  if(!confirm("Delete this entry?")) return;
-  await fetch(`${SCRIPT_URL}?action=delete_uid&sheet=${mapSectionToSheet(section)}&uid=${uid}&callback=callback`);
-  fetchAllSections();
-}
-
-function editRow(section, uid) {
-  // populate the form fields if needed
-  // optional: can store UID in a hidden field for update
-  alert(`Edit not implemented in this demo. UID=${uid}`);
-}
-
-function mapSectionToSheet(section) {
-  return {
-    vesselJoin: 'Vessel_join',
-    arrivingCrew: 'Arrivals',
-    dailyUpdates: 'Updates',
-    memo: 'Memo',
-    training: 'Training',
-    pni: 'Pni'
-  }[section];
-}
-
-/* ============================================================
-   STICKY NOTES
-=========================================================== */
+/* ==================== STICKY NOTE ==================== */
 function saveSticky() {
   localStorage.setItem('stickyNote', document.getElementById('stickyNote').value);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Load sticky note
-  const sticky = localStorage.getItem('stickyNote');
-  if(sticky) document.getElementById('stickyNote').value = sticky;
-
-  // Show login first
-  showLogin();
-
-  // Setup add/reset buttons
-  setupAddReset('vesselJoin','vjAddBtn','vjResetBtn',['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight'],'Vessel_join');
-  setupAddReset('arrivingCrew','acAddBtn','acResetBtn',['acVessel','acPort','acNo','acRank','acDate','acFlight'],'Arrivals');
-  setupAddReset('dailyUpdates','duAddBtn','duResetBtn',['duTitle','duDetails','duDate'],'Updates');
-  setupAddReset('memo','mAddBtn','mResetBtn',['mTitle','mDetails','mDate'],'Memo');
-  setupAddReset('training','tAddBtn','tResetBtn',['tSubject','tDetails','tDate'],'Training');
-  setupAddReset('pni','pAddBtn','pResetBtn',['pSubject','pDetails','pDate'],'Pni');
+  if (!currentUser) showLogin();
+  document.getElementById('stickyNote').value = localStorage.getItem('stickyNote') || '';
 });
-
-/* ============================================================
-   PDF EXPORT
-=========================================================== */
-async function printSectionPDF(section, filename, includeArchived=false) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
-  doc.setFontSize(8);
-
-  // fetch main sheet data
-  const sheetName = mapSectionToSheet(section) || section;
-  let rows = await fetchSheet(sheetName);
-
-  // if includeArchived requested
-  if(includeArchived) {
-    const archiveRows = await fetchSheet('Archive_' + sheetName);
-    rows = rows.concat(archiveRows);
-  }
-
-  if(rows.length===0) { showMessage("No data to export"); return; }
-
-  const headers = Object.keys(rows[0]);
-  const body = rows.map(r => headers.map(h => r[h]));
-
-  doc.autoTable({head:[headers], body});
-  doc.save(filename+'.pdf');
-}
-
-/* ============================================================
-   MANUAL SYNC / CLEAR LOCAL
-=========================================================== */
-function manualSync() { fetchAllSections(); }
-function clearAllLocal() { localStorage.clear(); showMessage("Local storage cleared"); }
-
 </script>
 </body>
 </html>
