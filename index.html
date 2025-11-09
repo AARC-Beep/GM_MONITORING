@@ -153,289 +153,177 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 
 <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 
-<script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
-let lastChatLength = 0;
+// ===================== CONFIG =====================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
+const SECTIONS = ["dashboard","vesselJoin","arrivingCrew","dailyUpdates","memo","training","pni","helpSection"];
+const SHEETS = {
+  vesselJoin: "Vessel_join",
+  arrivingCrew: "Arrivals",
+  dailyUpdates: "Updates",
+  memo: "Memo",
+  training: "Training",
+  pni: "PNI",
+  chatBoard: "ChatBoard",
+  users: "Users"
+};
+let DATA = {}; // cached data per sheet
+let CURRENT_USER = null;
 
-// LOGIN
-const loginOverlay = document.getElementById('loginOverlay');
-const loginBtn = document.getElementById('loginBtn');
-const loginMsg = document.getElementById('loginMsg');
-const logoutBtn = document.getElementById('logoutBtn');
+// ===================== UTIL =====================
+function outputDebug(msg) { console.log("[SeaCrew]", msg); }
+function showSection(secId){
+  SECTIONS.forEach(s => document.getElementById(s).style.display = (s === secId) ? "block" : "none");
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("active", a.dataset.target===secId));
+}
+function navTo(event, secId){ event.preventDefault(); showSection(secId); }
+function navToElement(secId){ showSection(secId); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-function showLogin() { loginOverlay.style.display = 'flex'; }
-function hideLogin() { loginOverlay.style.display = 'none'; }
+// ===================== LOGIN =====================
+async function showLogin(){ document.getElementById("loginOverlay").style.display="flex"; }
+async function hideLogin(){ document.getElementById("loginOverlay").style.display="none"; }
+async function login(){
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  const cbName = "cbLogin"+Date.now();
+  window[cbName] = (res) => {
+    if(res.status==="success"){
+      CURRENT_USER = res;
+      document.getElementById("loginMsg").innerText="";
+      document.getElementById("logoutBtn").style.display="inline-block";
+      hideLogin();
+      fetchAllData();
+    } else {
+      document.getElementById("loginMsg").innerText=res.message;
+    }
+    delete window[cbName];
+  };
+  const url = `${GAS_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=${cbName}`;
+  loadJSONP(url);
+}
+function logout(){
+  CURRENT_USER=null;
+  document.getElementById("logoutBtn").style.display="none";
+  showLogin();
+}
 
-loginBtn.addEventListener('click', async () => {
-  const username = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPass').value;
-  const res = await fetch(`${SCRIPT_URL}?action=auth&username=${username}&password=${password}`);
-  const data = await res.json();
-  if (data.status==='success') {
-    hideLogin(); logoutBtn.style.display='inline-block';
-    loadDashboard();
-  } else { loginMsg.textContent = data.message || 'Login failed'; }
-});
-
-logoutBtn.addEventListener('click', () => { showLogin(); logoutBtn.style.display='none'; });
-
-// NAVIGATION
-document.querySelectorAll('.sidebar a').forEach(a => {
-  a.addEventListener('click', e => {
-    e.preventDefault();
-    document.querySelectorAll('.section').forEach(s=>s.style.display='none');
-    document.getElementById(a.dataset.target).style.display='block';
-    document.querySelectorAll('.sidebar a').forEach(a2=>a2.classList.remove('active'));
-    a.classList.add('active');
+// ===================== FETCH =====================
+function loadJSONP(url){
+  const s = document.createElement("script");
+  s.src = url; s.async=true;
+  document.body.appendChild(s);
+  s.onload=()=>document.body.removeChild(s);
+}
+function fetchSheet(sheetKey, cb){
+  const cbName = "cbFetch"+sheetKey+Date.now();
+  window[cbName] = (res)=>{ if(res.status==="success"){ DATA[sheetKey]=res.data; cb && cb(res.data); } delete window[cbName]; };
+  const url = `${GAS_URL}?action=fetch&sheet=${SHEETS[sheetKey]}&callback=${cbName}`;
+  loadJSONP(url);
+}
+function fetchAllData(){
+  Object.keys(SHEETS).forEach(k=>{
+    if(k!=="users" && k!=="chatBoard") fetchSheet(k, updatePreviews);
   });
-});
-
-// FETCH DASHBOARD DATA
-async function loadDashboard() {
-  const sheets=['Vessel_join','Arrivals','Updates','Memo','Training','Pni','ChatBoard','Users'];
-  const res = await fetch(`${SCRIPT_URL}?action=fetchall&sheets=${sheets.join(',')}`);
-  const data = await res.json();
-
-  // Example: populate vesselPreviewCard
-  if(data.Vessel_join){
-    let html='';
-    data.Vessel_join.forEach((r,i)=>{ html+=`<div class="row-entry"><div class="left">${r[0]} (${r[1]})</div><div class="right">
-    <button class="btn btn-sm btn-warning" onclick="editEntry('Vessel_join',${i})">Edit</button>
-    <button class="btn btn-sm btn-danger" onclick="deleteEntry('Vessel_join',${i})">Del</button></div></div>`});
-    document.getElementById('vesselPreviewCard').innerHTML=html;
-  }
-
-  // CHATBOARD ALERT
-  if(data.ChatBoard && data.ChatBoard.length>lastChatLength){
-    const chatLog=document.getElementById('chatLog');
-    chatLog.innerHTML='';
-    data.ChatBoard.forEach(c=>{
-      const div=document.createElement('div'); div.textContent=`[${c[0]}] ${c[1]}: ${c[2]}`;
-      chatLog.appendChild(div);
-    });
-    chatLog.scrollTop=chatLog.scrollHeight;
-    new Audio('https://freesound.org/data/previews/331/331912_3248244-lq.mp3').play();
-    lastChatLength=data.ChatBoard.length;
-  }
+  fetchChatBoard();
 }
 
-// ADD / EDIT / DELETE
-async function editEntry(sheet,index){ alert('Populate form to edit entry '+sheet+' '+index); }
-async function deleteEntry(sheet,index){
-  if(!confirm('Delete this entry?')) return;
-  await fetch(`${SCRIPT_URL}?action=delete_uid&sheet=${sheet}&index=${index}`);
-  loadDashboard();
+// ===================== PREVIEWS =====================
+function updatePreviews(){
+  // VesselJoin preview
+  document.getElementById("vesselPreviewSmall").innerHTML = DATA.vesselJoin.map(r=>`<div>${r.Vessel || ""} | ${r.Port || ""} | ${r['No. of Crew'] || ""}</div>`).join("");
+  document.getElementById("countVessel").innerText = DATA.vesselJoin.length;
+  // Arrivals preview
+  document.getElementById("arrivalsPreviewSmall").innerHTML = DATA.arrivingCrew.map(r=>`<div>${r.Vessel || ""} | ${r.Port || ""} | ${r['No. of Crew'] || ""}</div>`).join("");
+  document.getElementById("countArrivals").innerText = DATA.arrivingCrew.length;
+  // Updates preview
+  document.getElementById("updatesPreviewSmall").innerHTML = DATA.dailyUpdates.map(r=>`<div>${r.Title || ""} | ${r.Details || ""}</div>`).join("");
+  document.getElementById("countUpdates").innerText = DATA.dailyUpdates.length;
+  // Memo preview
+  document.getElementById("memoPreviewSmall").innerHTML = DATA.memo.map(r=>`<div>${r.Title || ""} | ${r.Details || ""}</div>`).join("");
+  document.getElementById("countMemo").innerText = DATA.memo.length;
+  // Training preview
+  document.getElementById("trainingPreviewSmall").innerHTML = DATA.training.map(r=>`<div>${r.Subject || ""} | ${r.Details || ""}</div>`).join("");
+  document.getElementById("countTraining").innerText = DATA.training.length;
+  // PnI preview
+  document.getElementById("pniPreviewSmall").innerHTML = DATA.pni.map(r=>`<div>${r.Subject || ""} | ${r.Details || ""}</div>`).join("");
+  document.getElementById("countPNI").innerText = DATA.pni.length;
 }
 
-// CHAT SEND
-document.getElementById('chatSendBtn').addEventListener('click', async ()=>{
-  const name=document.getElementById('chatName').value;
-  const msg=document.getElementById('chatMsg').value;
-  if(!msg.trim()) return;
-  await fetch(`${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${JSON.stringify([new Date(),name,msg])}`);
-  document.getElementById('chatMsg').value='';
-  loadDashboard();
-});
-
-// PDF EXPORT
-document.getElementById('pdfBtn').addEventListener('click', async ()=>{
-  const doc = new jspdf.jsPDF('landscape');
-  doc.text("SeaCrew Monthly Report",10,10);
-  // TODO: Fetch all data and add to doc using autotable
-  doc.save('SeaCrew_Monthly_Report.pdf');
-});
-
-// AUTO SYNC
-document.getElementById('syncBtn').addEventListener('click', loadDashboard);
-setInterval(loadDashboard,15000);
-
-showLogin();
-  <script>
-/* ======================
-   SeaCrew Dashboard JS
-====================== */
-
-// GLOBALS
-let currentUser = null;
-let autoSyncInterval = null;
-
-// ----------------------
-// NAVIGATION
-// ----------------------
-function navTo(event, sectionId) {
-    event.preventDefault();
-    document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
-    const target = document.getElementById(sectionId);
-    if (target) target.style.display = 'block';
-
-    // Active sidebar link
-    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-    const link = event.currentTarget;
-    if (link) link.classList.add('active');
+// ===================== ADD / UPDATE / DELETE =====================
+function appendRow(sheetKey, rowData){
+  const cbName = "cbAppend"+sheetKey+Date.now();
+  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
+  const url = `${GAS_URL}?action=append_uid&sheet=${SHEETS[sheetKey]}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=${cbName}`;
+  loadJSONP(url);
+}
+function updateRow(sheetKey, uid, rowData){
+  const cbName = "cbUpdate"+sheetKey+Date.now();
+  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
+  const url = `${GAS_URL}?action=update_uid&sheet=${SHEETS[sheetKey]}&uid=${encodeURIComponent(uid)}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=${cbName}`;
+  loadJSONP(url);
+}
+function deleteRow(sheetKey, uid){
+  if(!confirm("Confirm delete? This will archive the item.")) return;
+  const cbName = "cbDelete"+sheetKey+Date.now();
+  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
+  const url = `${GAS_URL}?action=delete_uid&sheet=${SHEETS[sheetKey]}&uid=${encodeURIComponent(uid)}&callback=${cbName}`;
+  loadJSONP(url);
 }
 
-function navToElement(sectionId) {
-    const link = [...document.querySelectorAll('.sidebar a')].find(a => a.dataset.target === sectionId);
-    if (link) navTo({currentTarget: link, preventDefault: ()=>{}}, sectionId);
-}
-
-// ----------------------
-// LOGIN
-// ----------------------
-document.getElementById('loginBtn').addEventListener('click', async () => {
-    const username = document.getElementById('loginUser').value.trim();
-    const password = document.getElementById('loginPass').value.trim();
-    const msgEl = document.getElementById('loginMsg');
-
-    if (!username || !password) { msgEl.textContent = "Enter username/password"; return; }
-
-    try {
-        const resp = await fetch(`${GAS_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-        const data = await resp.json();
-        if (data.status === 'success') {
-            currentUser = data;
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = 'inline-block';
-            startAutoSync();
-            loadAllSections();
-        } else {
-            msgEl.textContent = data.message;
-        }
-    } catch(e) { msgEl.textContent = "Login failed: "+e.message; }
-});
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    currentUser = null;
-    document.getElementById('loginOverlay').style.display = 'flex';
-    document.getElementById('logoutBtn').style.display = 'none';
-    clearInterval(autoSyncInterval);
-});
-
-// ----------------------
-// ADD / UPDATE / DELETE
-// ----------------------
-async function addItem(section, rowData) {
-    const params = new URLSearchParams({action:'append_uid', sheet:section, row:JSON.stringify(rowData)});
-    const resp = await fetch(`${GAS_URL}?${params.toString()}`);
-    return await resp.json();
-}
-
-async function updateItem(section, uid, rowData) {
-    const params = new URLSearchParams({action:'update_uid', sheet:section, uid, row:JSON.stringify(rowData)});
-    const resp = await fetch(`${GAS_URL}?${params.toString()}`);
-    return await resp.json();
-}
-
-async function deleteItem(section, uid) {
-    const params = new URLSearchParams({action:'delete_uid', sheet:section, uid});
-    const resp = await fetch(`${GAS_URL}?${params.toString()}`);
-    return await resp.json();
-}
-
-// ----------------------
-// FETCH / SYNC
-// ----------------------
-async function fetchSection(section) {
-    const resp = await fetch(`${GAS_URL}?action=fetch&sheet=${section}`);
-    const data = await resp.json();
-    return (data.status==='success') ? data.data : [];
-}
-
-async function fetchAllSections() {
-    const sheets = ['Vessel_join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
-    const resp = await fetch(`${GAS_URL}?action=fetchall&sheets=${sheets.join(',')}`);
-    const data = await resp.json();
-    return (data.status==='success') ? data.data : {};
-}
-
-function startAutoSync() {
-    autoSyncInterval = setInterval(loadAllSections, 15000);
-}
-
-async function loadAllSections() {
-    const allData = await fetchAllSections();
-    // Populate preview tables
-    populatePreview('vesselJoin','Vessel_join', allData);
-    populatePreview('arrivingCrew','Arrivals', allData);
-    populatePreview('dailyUpdates','Updates', allData);
-    populatePreview('memo','Memo', allData);
-    populatePreview('training','Training', allData);
-    populatePreview('pni','Pni', allData);
-
-    // Chat alerts
-    if(allData.ChatBoard){
-        updateChatBoard(allData.ChatBoard);
-    }
-}
-
-function populatePreview(sectionId, sheetName, allData) {
-    const el = document.getElementById(sectionId+'PreviewSmall');
-    if(!el || !allData[sheetName]) return;
-    el.innerHTML = allData[sheetName].map(r=>Object.values(r).join(' | ')).join('<br>');
-}
-
-// ----------------------
-// CHATBOARD
-// ----------------------
-const chatLog = document.getElementById('chatLog');
-document.getElementById('chatSendBtn').addEventListener('click', async () => {
-    const name = document.getElementById('chatName').value.trim();
-    const msg = document.getElementById('chatMsg').value.trim();
-    if(!name || !msg) return alert('Enter name & message');
-    await addItem('ChatBoard',[name,msg,new Date()]);
-    document.getElementById('chatMsg').value='';
-    loadAllSections();
-});
-
-function updateChatBoard(chatData) {
-    chatLog.innerHTML = chatData.map(c=>`<div><b>${c.Name}</b>: ${c.Message}</div>`).join('');
-    chatLog.scrollTop = chatLog.scrollHeight;
-
-    // Play sound alert for new messages (optional)
-    if(chatData.length > (chatLog.dataset.count || 0)){
-        const audio = new Audio('https://www.soundjay.com/button/sounds/button-16.mp3');
+// ===================== CHATBOARD =====================
+function fetchChatBoard(){
+  const cbName = "cbChat"+Date.now();
+  window[cbName]=(res)=>{
+    if(res.status==="success"){
+      const log = document.getElementById("chatLog");
+      log.innerHTML = res.data.map(r=>`<div><strong>${r.Name}</strong>: ${r.Message}</div>`).join("");
+      log.scrollTop=log.scrollHeight;
+      // Play alert if new message
+      if(window.LAST_CHAT_COUNT!==undefined && res.data.length>window.LAST_CHAT_COUNT){
+        const audio = new Audio("https://www.soundjay.com/button/beep-07.wav");
         audio.play();
-        chatLog.dataset.count = chatData.length;
+      }
+      window.LAST_CHAT_COUNT=res.data.length;
     }
+    delete window[cbName];
+  };
+  const url = `${GAS_URL}?action=fetch&sheet=${SHEETS.chatBoard}&callback=${cbName}`;
+  loadJSONP(url);
+}
+function sendChat(){
+  const name = document.getElementById("chatName").value.trim() || "Anonymous";
+  const msg = document.getElementById("chatMsg").value.trim();
+  if(!msg) return;
+  appendRow("chatBoard",{Name:name,Message:msg,Date:new Date().toLocaleString()});
+  document.getElementById("chatMsg").value="";
+  setTimeout(fetchChatBoard,500);
 }
 
-// ----------------------
-// MONTHLY PDF (includes archived items)
-// ----------------------
-async function printSectionPDF(section, filename, monthly=false){
-    const {jsPDF} = window.jspdf;
-    const doc = new jsPDF('landscape','pt','A4');
-    let data = await fetchSection(section);
-    if(monthly){
-        const archiveResp = await fetch(`${GAS_URL}?action=fetch&sheet=Archive_${section}`);
-        const archiveData = await archiveResp.json();
-        if(archiveData.status==='success') data = data.concat(archiveData.data);
-    }
-    const columns = Object.keys(data[0]||{});
-    const rows = data.map(r=>columns.map(c=>r[c]));
-    doc.autoTable({head:[columns], body:rows, styles:{fontSize:8}});
-    doc.save(filename+'.pdf');
+// ===================== PDF =====================
+function printSectionPDF(sectionId,fileName,monthly=false){
+  const doc = new jspdf.jsPDF({orientation:"landscape"});
+  let rows=[], headers=[];
+  if(sectionId!=="dashboard"){
+    const sheetKey = Object.keys(SHEETS).find(k=>k!== "users" && k!=="chatBoard" && document.getElementById(sectionId));
+    const data = DATA[sheetKey] || [];
+    if(data.length===0){ alert("No data to export"); return; }
+    headers = Object.keys(data[0]);
+    rows = data.map(r=>headers.map(h=>r[h]));
+  }
+  doc.autoTable({head:[headers],body:rows,styles:{fontSize:8}});
+  doc.save(fileName+".pdf");
 }
 
-// ----------------------
-// STICKY NOTE
-// ----------------------
-function saveSticky() {
-    localStorage.setItem('stickyNote', document.getElementById('stickyNote').value);
-}
-
-function loadSticky() {
-    document.getElementById('stickyNote').value = localStorage.getItem('stickyNote')||'';
-}
-
-// ----------------------
-// INIT
-// ----------------------
-window.addEventListener('load', ()=>{
-    document.getElementById('loginOverlay').style.display='flex';
-    loadSticky();
+// ===================== EVENT LISTENERS =====================
+document.getElementById("loginBtn").onclick=login;
+document.getElementById("logoutBtn").onclick=logout;
+document.getElementById("chatSendBtn").onclick=sendChat;
+document.querySelectorAll(".sidebar a").forEach(a=>{
+  a.onclick=(e)=>{ e.preventDefault(); showSection(a.dataset.target); };
 });
 
+// ===================== INIT =====================
+showLogin();
 </script>
 </body>
 </html>
