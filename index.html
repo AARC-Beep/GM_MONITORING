@@ -4,150 +4,199 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SeaCrew Dashboard</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
 <style>
-body { display: flex; min-height: 100vh; margin: 0; }
-.sidebar { width: 220px; background: #343a40; color: white; }
-.sidebar a { display: block; padding: 10px 15px; color: white; text-decoration: none; }
-.sidebar a:hover { background: #495057; }
-.main { flex: 1; padding: 20px; }
+body { margin: 0; background: #f8f9fa; }
+#login_box {
+    width: 350px;
+    margin: 120px auto;
+    padding: 25px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.15);
+}
+#dashboard { display:none; }
+.sidebar {
+    width: 210px;
+    height: 100vh;
+    background: #212529;
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding-top: 20px;
+}
+.sidebar a {
+    display: block;
+    color: white;
+    padding: 12px 20px;
+    text-decoration: none;
+}
+.sidebar a:hover {
+    background: #343a40;
+}
+.main {
+    margin-left: 210px;
+    padding: 20px;
+}
 </style>
 </head>
+
 <body>
 
-<div class="sidebar">
-    <h4 class="text-center py-3">SeaCrew</h4>
-    <a href="#" data-sheet="Vessel_Join">Vessel Join</a>
-    <a href="#" data-sheet="Arrivals">Arrivals</a>
-    <a href="#" data-sheet="Updates">Updates</a>
-    <a href="#" data-sheet="Memo">Memo</a>
-    <a href="#" data-sheet="Training">Training</a>
-    <a href="#" data-sheet="Pni">Pni</a>
-    <a href="#" data-sheet="ChatBoard">ChatBoard</a>
-    <a href="#" data-sheet="Users">Users</a>
-    <hr>
-    <a href="https://flightaware.com" target="_blank">FlightAware</a>
-    <a href="https://weather.com" target="_blank">Weather</a>
-    <a href="https://dmw.gov" target="_blank">DMW</a>
-    <a href="https://marina.gov.ph" target="_blank">Marina</a>
+<!-- ✅ LOGIN BOX -->
+<div id="login_box">
+    <h3 class="text-center mb-3">SeaCrew Login</h3>
+    <input type="text" id="username" class="form-control mb-2" placeholder="Username">
+    <input type="password" id="password" class="form-control mb-3" placeholder="Password">
+    <button id="loginbtn" class="btn btn-primary w-100">Login</button>
 </div>
 
-<div class="main">
-    <h3>Login</h3>
-    <div class="mb-3">
-        <input type="text" id="username" class="form-control" placeholder="Username">
-    </div>
-    <div class="mb-3">
-        <input type="password" id="password" class="form-control" placeholder="Password">
-    </div>
-    <button id="loginbtn" class="btn btn-primary mb-3">Login</button>
-<input type="text" id="username" placeholder="Username">
-<input type="password" id="password" placeholder="Password">
+<!-- ✅ DASHBOARD -->
+<div id="dashboard">
 
+    <!-- ✅ SIDEBAR -->
+    <div class="sidebar">
+        <h4 class="text-center">SeaCrew</h4>
+        <hr>
+        <a class="sidebar-link" data-sheet="Vessel_Join">Vessel Join</a>
+        <a class="sidebar-link" data-sheet="Arrivals">Arrivals</a>
+        <a class="sidebar-link" data-sheet="Updates">Updates</a>
+        <a class="sidebar-link" data-sheet="Memo">Memo</a>
+        <a class="sidebar-link" data-sheet="Training">Training</a>
+        <a class="sidebar-link" data-sheet="Pni">Pni</a>
+        <a class="sidebar-link" data-sheet="ChatBoard">ChatBoard</a>
+        <a class="sidebar-link" data-sheet="Users">Users</a>
+        <hr>
+        <a href="https://flightaware.com/" target="_blank">FlightAware</a>
+        <a href="https://weather.com/" target="_blank">Weather</a>
+        <a href="https://dmw.gov.ph/" target="_blank">DMW</a>
+        <a href="https://marina.gov.ph/" target="_blank">Marina</a>
+    </div>
+
+    <!-- ✅ MAIN AREA -->
+    <div class="main">
+        <h3 id="sheetTitle">Dashboard</h3>
+        <div id="dataContainer" class="mt-3"></div>
+    </div>
 </div>
 
+
+<!-- ✅ JS SCRIPT -->
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_rEHqI_e8c5C6_fYVZlnvLDE5FuCasSlBl0BVgkex1Hm-HrWnU21KYkIblNf8tcV8/exec"; // Replace with your GAS Web App URL
+document.addEventListener("DOMContentLoaded", () => {
 
-// -------------------------------
-// Safe JSON parse
-// -------------------------------
-function safeJSONParse(rawData) {
-    try {
-        const jsonMatch = rawData.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON found");
-        return JSON.parse(jsonMatch[0]);
-    } catch (err) {
-        console.error("JSON parse failed:", err, rawData);
-        return null;
-    }
-}
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFQRBmpM9WCuPh-uMKJMGYziNzqMvgNDB2CgWe4zkwJIp9z0K2YPdqTNL0AnyhB-1A/exec";   // ✅ Replace this
 
-// -------------------------------
-// Login
-// -------------------------------
-document.getElementById("loginbtn")?.addEventListener("click", async () => {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-    if (!username || !password) return alert("Enter username and password");
-
-    try {
-        const response = await fetch(`${SCRIPT_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-        const data = safeJSONParse(await response.text());
-        if (data?.status === "ok") {
-            alert(`Login successful! Role: ${data.role}`);
-        } else {
-            alert(data?.message || "Login failed");
+    // -----------------------------------------------------
+    // ✅ SAFE JSON PARSER (prevents callback errors)
+    // -----------------------------------------------------
+    function safeJSONParse(raw) {
+        try {
+            const m = raw.match(/\{[\s\S]*\}/);
+            if (!m) throw new Error("No JSON detected");
+            return JSON.parse(m[0]);
+        } catch (err) {
+            console.error("JSON PARSE ERROR:", err, raw);
+            return null;
         }
-    } catch (err) {
-        console.error(err);
-        alert("Login request failed");
     }
-});
 
-// -------------------------------
-// Fetch all rows
-// -------------------------------
-async function fetchAll(sheetName) {
-    try {
-        const response = await fetch(`${SCRIPT_URL}?action=fetchAll&sheet=${sheetName}`);
-        const data = safeJSONParse(await response.text());
-        return data?.data || [];
-    } catch (err) {
-        console.error(err);
-        return [];
-    }
-}
+    // ✅ ELEMENTS
+    const loginBox      = document.getElementById("login_box");
+    const dashboard     = document.getElementById("dashboard");
+    const loginBtn      = document.getElementById("loginbtn");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const dataContainer = document.getElementById("dataContainer");
+    const sheetTitle    = document.getElementById("sheetTitle");
 
-// -------------------------------
-// Append, Update, Delete
-// -------------------------------
-async function appendData(sheetName, record) {
-    const params = new URLSearchParams({ action:"append", sheet:sheetName, record:JSON.stringify(record) });
-    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-    const data = safeJSONParse(await response.text());
-    return data?.status === "ok";
-}
+    // -----------------------------------------------------
+    // ✅ LOGIN
+    // -----------------------------------------------------
+    loginBtn.addEventListener("click", async () => {
 
-async function updateData(sheetName, uid, record) {
-    const params = new URLSearchParams({ action:"update", sheet:sheetName, uid, record:JSON.stringify(record) });
-    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-    const data = safeJSONParse(await response.text());
-    return data?.status === "ok";
-}
+        const user = usernameInput.value.trim();
+        const pass = passwordInput.value.trim();
 
-async function deleteData(sheetName, uid) {
-    const params = new URLSearchParams({ action:"delete", sheet:sheetName, uid });
-    const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
-    const data = safeJSONParse(await response.text());
-    return data?.status === "ok";
-}
+        if (!user || !pass) return alert("Enter username and password.");
 
-// -------------------------------
-// Handle sidebar clicks
-// -------------------------------
-document.querySelectorAll(".sidebar a[data-sheet]").forEach(link => {
-    link.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const sheet = link.getAttribute("data-sheet");
-        const rows = await fetchAll(sheet);
-        const container = document.getElementById("dataContainer");
-        if (rows.length === 0) {
-            container.innerHTML = "<p>No data found.</p>";
-            return;
+        try {
+            const response = await fetch(
+                `${SCRIPT_URL}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`
+            );
+
+            const data = safeJSONParse(await response.text());
+
+            if (!data) return alert("Server Error");
+
+            if (data.status === "ok") {
+                alert("✅ Login Successful!");
+
+                loginBox.style.display = "none";
+                dashboard.style.display = "block";
+
+            } else {
+                alert("❌ " + data.message);
+            }
+
+        } catch (err) {
+            console.error("LOGIN ERROR:", err);
+            alert("Network Error");
         }
-        let html = `<table class="table table-bordered"><thead><tr>`;
-        Object.keys(rows[0]).forEach(h => html += `<th>${h}</th>`);
-        html += `</tr></thead><tbody>`;
-        rows.forEach(r => {
-            html += "<tr>";
-            Object.values(r).forEach(v => html += `<td>${v}</td>`);
-            html += "</tr>";
-        });
-        html += "</tbody></table>`;
-        container.innerHTML = html;
     });
+
+    // -----------------------------------------------------
+    // ✅ FETCH ALL DATA
+    // -----------------------------------------------------
+    async function fetchAll(sheetName) {
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=fetchAll&sheet=${sheetName}`);
+            const json = safeJSONParse(await r.text());
+            return json?.data || [];
+        } catch (err) {
+            console.error(err);
+            return [];
+        }
+    }
+
+    // -----------------------------------------------------
+    // ✅ SIDEBAR CLICK HANDLER
+    // -----------------------------------------------------
+    document.querySelectorAll(".sidebar-link").forEach(link => {
+        link.addEventListener("click", async (e) => {
+            e.preventDefault();
+            const sheet = link.dataset.sheet;
+
+            sheetTitle.innerText = sheet;
+            dataContainer.innerHTML = `<p>⏳ Loading ${sheet}...</p>`;
+
+            const rows = await fetchAll(sheet);
+
+            if (rows.length === 0) {
+                dataContainer.innerHTML = "<p>No data available.</p>";
+                return;
+            }
+
+            let html = `<table class="table table-bordered table-striped"><thead><tr>`;
+            Object.keys(rows[0]).forEach(h => html += `<th>${h}</th>`);
+            html += `</tr></thead><tbody>`;
+
+            rows.forEach(row => {
+                html += `<tr>`;
+                Object.values(row).forEach(v => html += `<td>${v}</td>`);
+                html += `</tr>`;
+            });
+
+            html += "</tbody></table>";
+
+            dataContainer.innerHTML = html;
+        });
+    });
+
 });
 </script>
 
