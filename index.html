@@ -1,420 +1,168 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>SeaCrew Dashboard — Daily Routine Log</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>SeaCrew Dashboard — Daily Routine Log</title>
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <!-- jsPDF + AutoTable (for PDF export) -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 
-  <style>
-    :root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
-    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
-    .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
-    .sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
-    .sidebar a { display:block; color:#cfe8ff; padding:10px 12px; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:500; }
-    .sidebar a:hover { background: rgba(255,255,255,0.05); color:#fff; text-decoration:none; }
-    .sidebar a.active { background:#072033; color:#fff; }
-    .content { margin-left: calc(var(--sidebar-width) + 28px); padding:24px; min-height:100vh; }
-    .card-slim { padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(9,30,66,0.06); background:#fff; margin-bottom:16px; }
-    .small-note { font-size:0.9rem; color:#666; }
-    .preview-table { max-height:200px; overflow:auto; padding:8px; background:#fafbff; border-radius:8px; border:1px solid #eef3fb;}
-    .entry-card { border:1px solid #e9eef6; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:#fff; }
-    .entry-meta { color:#444; font-size:0.95rem; }
-    .form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .form-row .form-control { min-width:140px; }
-    .entry-actions button { margin-left:6px; }
-    .fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
+<style>
+:root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
+body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
+.sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
+.sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
+.sidebar a { display:block; color:#cfe8ff; padding:10px 12px; text-decoration:none; border-radius:8px; margin-bottom:6px; font-weight:500; }
+.sidebar a:hover { background: rgba(255,255,255,0.05); color:#fff; text-decoration:none; }
+.sidebar a.active { background:#072033; color:#fff; }
+.content { margin-left: calc(var(--sidebar-width) + 28px); padding:24px; min-height:100vh; }
+.card-slim { padding:14px; border-radius:12px; box-shadow:0 6px 18px rgba(9,30,66,0.06); background:#fff; margin-bottom:16px; }
+.small-note { font-size:0.9rem; color:#666; }
+.preview-table { max-height:200px; overflow:auto; padding:8px; background:#fafbff; border-radius:8px; border:1px solid #eef3fb;}
+.entry-card { border:1px solid #e9eef6; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; gap:12px; align-items:flex-start; background:#fff; }
+.entry-meta { color:#444; font-size:0.95rem; }
+.form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.form-row .form-control { min-width:140px; }
+.entry-actions button { margin-left:6px; }
+.fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
 
-    /* layout for list rows */
-    .row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
-    .row-entry .left { flex:1; }
-    .row-entry .right { display:flex; gap:8px; align-items:center; }
+.row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
+.row-entry .left { flex:1; }
+.row-entry .right { display:flex; gap:8px; align-items:center; }
 
-    /* Chatboard */
-    .chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
-    .chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
-    .chat-inputs { display:flex; gap:8px; align-items:center; }
+.chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
+.chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
+.chat-inputs { display:flex; gap:8px; align-items:center; }
 
-    /* responsive */
-    @media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
-    @media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
+@media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
+@media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
 
-    /* some small helpers */
-    .btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
-    .badge-synced { font-size:0.75rem; color:#0b6; margin-left:6px; }
-    .login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; }
-    .login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
-  </style>
+.btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
+.badge-synced { font-size:0.75rem; color:#0b6; margin-left:6px; }
+.login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+</style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
+<!-- LOGIN -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-card">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 style="margin:0">TIWALA — SeaCrew Login</h5>
-      <img src="" alt="" style="width:36px;opacity:.4"/>
+    <h5>TIWALA — SeaCrew Login</h5>
+    <input id="loginUser" class="form-control my-2" placeholder="Username">
+    <input id="loginPass" type="password" class="form-control my-2" placeholder="Password">
+    <div class="d-flex justify-content-between align-items-center">
+      <div><input type="checkbox" id="saveCred"> Remember</div>
+      <button id="loginBtn" class="btn btn-primary">Sign in</button>
     </div>
-    <div>
-      <div class="mb-2"><input id="loginUser" class="form-control" placeholder="Username"></div>
-      <div class="mb-2"><input id="loginPass" type="password" class="form-control" placeholder="Password"></div>
-      <div class="d-flex justify-content-between align-items-center">
-        <div><input type="checkbox" id="saveCred"> <label for="saveCred">Remember (local only)</label></div>
-        <div><button id="loginBtn" class="btn btn-primary">Sign in</button></div>
-      </div>
-      <div class="mt-2 small-note" id="loginMsg"></div>
-    </div>
+    <div id="loginMsg" class="small-note mt-2"></div>
   </div>
 </div>
 
-<!-- Sidebar -->
-<nav class="sidebar" aria-label="Main navigation">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY ROUTINE LOG</h4>
-
-  <a href="#" class="active" data-target="dashboard" onclick="navTo(event,'dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a>
-  <a href="#" data-target="vesselJoin" onclick="navTo(event,'vesselJoin')"><i class="fa-solid fa-ship"></i> Vessel Crew Joining</a>
-  <a href="#" data-target="arrivingCrew" onclick="navTo(event,'arrivingCrew')"><i class="fa-solid fa-plane-departure"></i> Arriving Crew</a>
-  <a href="#" data-target="dailyUpdates" onclick="navTo(event,'dailyUpdates')"><i class="fa-regular fa-calendar-days"></i> Daily Updates</a>
-  <a href="#" data-target="memo" onclick="navTo(event,'memo')"><i class="fa-regular fa-sticky-note"></i> Memo</a>
-  <a href="#" data-target="training" onclick="navTo(event,'training')"><i class="fa-solid fa-graduation-cap"></i> Training</a>
-  <a href="#" data-target="pni" onclick="navTo(event,'pni')"><i class="fa-solid fa-calendar-check"></i> P&amp;I / Events</a>
-  <a href="#" data-target="helpSection" onclick="navTo(event,'helpSection')"><i class="fa-solid fa-circle-info"></i> Help / User Guide</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-
-  <!-- External links requested -->
-  <div style="margin-top:6px">
-    <div class="small-note" style="color:#cfe8ff;margin-bottom:6px">Useful Tools</div>
-    <a href="https://flightaware.com/live/airport/RPLL" target="_blank" rel="noopener"><i class="fa-solid fa-plane"></i> Flights — FlightAware (MNL)</a>
-    <a href="https://www.msn.com/en-ph/news" target="_blank" rel="noopener"><i class="fa-solid fa-newspaper"></i> News — MSN Philippines</a>
-    <a href="https://zoom.earth/" target="_blank" rel="noopener"><i class="fa-solid fa-cloud-sun"></i> Weather — Zoom Earth</a>
-    <a href="https://dmw.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-passport"></i> DMW — Dept. of Migrant Workers</a>
-    <a href="https://owwa.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> OWWA</a>
-    <a href="https://marina.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-anchor"></i> MARINA</a>
-  </div>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-  <div class="small-note">Tip: Dashboard auto-syncs every 15s. If offline, entries save locally and will sync when online.</div>
+<!-- SIDEBAR -->
+<nav class="sidebar">
+<h4><i class="fa-solid fa-ship"></i> SeaCrew Dashboard</h4>
+<a href="#" class="active" data-target="dashboard">Dashboard</a>
+<a href="#" data-target="vesselJoin">Vessel Join</a>
+<a href="#" data-target="arrivingCrew">Arrivals</a>
+<a href="#" data-target="dailyUpdates">Updates</a>
+<a href="#" data-target="memo">Memo</a>
+<a href="#" data-target="training">Training</a>
+<a href="#" data-target="pni">P&I</a>
+<a href="#" data-target="helpSection">Help</a>
+<hr>
+<div class="small-note">Useful Tools</div>
+<a href="https://flightaware.com/live/airport/RPLL" target="_blank"><i class="fa-solid fa-plane"></i> Flights</a>
+<a href="https://www.msn.com/en-ph/news" target="_blank"><i class="fa-solid fa-newspaper"></i> News</a>
+<a href="https://zoom.earth/" target="_blank"><i class="fa-solid fa-cloud-sun"></i> Weather</a>
+<a href="https://dmw.gov.ph/" target="_blank"><i class="fa-solid fa-passport"></i> DMW</a>
+<a href="https://owwa.gov.ph/" target="_blank"><i class="fa-solid fa-people-group"></i> OWWA</a>
+<a href="https://marina.gov.ph/" target="_blank"><i class="fa-solid fa-anchor"></i> MARINA</a>
 </nav>
 
-<!-- Main content -->
-<main class="content" role="main">
-  <div class="d-flex justify-content-between align-items-start mb-3">
-    <div>
-      <h2 style="margin:0">SeaCrew Dashboard</h2>
-      <div class="small-note">Connected to Google Apps Script web app: <strong>DAILY ROUTINE LOG</strong></div>
-    </div>
-
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="manualSync()"><i class="fa-solid fa-arrows-rotate"></i> Sync now</button>
-      <button class="btn btn-outline-danger" onclick="clearAllLocal()"><i class="fa-solid fa-trash-can"></i> Clear local</button>
-      <button class="btn btn-primary" onclick="printSectionPDF('dashboard','SeaCrew_Monthly_Report',true)"><i class="fa-solid fa-file-pdf"></i> Monthly PDF</button>
-      <button class="btn btn-outline-info" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
-    </div>
+<main class="content">
+<div class="d-flex justify-content-between mb-3">
+  <h2>Dashboard</h2>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" id="manualSyncBtn">Sync now</button>
+    <button class="btn btn-outline-danger" id="clearLocalBtn">Clear local</button>
+    <button class="btn btn-primary" id="monthlyPDFBtn">Monthly PDF</button>
+    <button class="btn btn-outline-info" id="logoutBtn" style="display:none">Logout</button>
   </div>
+</div>
 
-  <!-- DASHBOARD (previews + chatboard) -->
-  <section id="dashboard" class="section active">
-    <div class="row g-3">
-      <!-- Previews columns -->
-      <div class="col-md-8">
-        <div class="card-slim">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 style="margin:0">Quick Overview</h5>
-            <div><small class="small-note">Last sync: <span id="lastSync">—</span></small></div>
-          </div>
+<section id="dashboard" class="section active">
+  <div class="card-slim">
+    <h5>Dashboard Overview</h5>
+    <div id="previewContainer"></div>
+  </div>
+</section>
 
-          <div class="row g-3 mt-3">
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Vessel Joining <small class="small-note">(<span id="countVessel">0</span>)</small></h6>
-                <div class="preview-table" id="vesselPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('vesselJoin')">Open</button></div>
-              </div>
-            </div>
+<section id="vesselJoin" class="section" style="display:none">
+  <h4>Vessel Join</h4>
+  <div class="form-row mb-2">
+    <input id="vjVessel" placeholder="Vessel" class="form-control">
+    <input id="vjPort" placeholder="Port" class="form-control">
+    <input id="vjNo" type="number" placeholder="Crew No." class="form-control">
+    <input id="vjRank" placeholder="Rank" class="form-control">
+    <input id="vjDate" type="date" class="form-control">
+    <input id="vjFlight" placeholder="Flight" class="form-control">
+    <button id="vjAddBtn" class="btn btn-success">Add</button>
+  </div>
+  <div id="vj_list" class="card-slim"></div>
+</section>
 
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Arrivals <small class="small-note">(<span id="countArrivals">0</span>)</small></h6>
-                <div class="preview-table" id="arrivalsPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('arrivingCrew')">Open</button></div>
-              </div>
-            </div>
+<section id="arrivingCrew" class="section" style="display:none">
+  <h4>Arrivals</h4>
+  <div class="form-row mb-2">
+    <input id="acVessel" placeholder="Vessel" class="form-control">
+    <input id="acPort" placeholder="Port" class="form-control">
+    <input id="acNo" type="number" placeholder="Crew No." class="form-control">
+    <input id="acRank" placeholder="Rank" class="form-control">
+    <input id="acDate" type="date" class="form-control">
+    <input id="acFlight" placeholder="Flight" class="form-control">
+    <button id="acAddBtn" class="btn btn-success">Add</button>
+  </div>
+  <div id="ac_list" class="card-slim"></div>
+</section>
 
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Updates <small class="small-note">(<span id="countUpdates">0</span>)</small></h6>
-                <div class="preview-table" id="updatesPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('dailyUpdates')">Open</button></div>
-              </div>
-            </div>
+<!-- Other sections similar to VesselJoin / Arrivals can be added here ... -->
 
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Memo <small class="small-note">(<span id="countMemo">0</span>)</small></h6>
-                <div class="preview-table" id="memoPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('memo')">Open</button></div>
-              </div>
-            </div>
+<section id="helpSection" class="section" style="display:none">
+<h4>User Guide</h4>
+<ol>
+<li>Login using Username/Password from Users sheet</li>
+<li>Use sidebar to navigate sections</li>
+<li>Add/Edit/Delete entries</li>
+<li>ChatBoard posts messages</li>
+<li>Sync data manually or auto-sync</li>
+<li>Monthly PDF export</li>
+</ol>
+</section>
 
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>Training <small class="small-note">(<span id="countTraining">0</span>)</small></h6>
-                <div class="preview-table" id="trainingPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('training')">Open</button></div>
-              </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="card-slim">
-                <h6>P&amp;I <small class="small-note">(<span id="countPNI">0</span>)</small></h6>
-                <div class="preview-table" id="pniPreviewSmall"></div>
-                <div class="mt-2 text-end"><button class="btn btn-sm btn-primary" onclick="navToElement('pni')">Open</button></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatboard / Sticky -->
-      <div class="col-md-4">
-        <div class="card-slim">
-          <h6>ChatBoard (public view)</h6>
-          <div class="chatboard">
-            <div class="chat-log" id="chatLog"></div>
-            <div class="chat-inputs">
-              <input id="chatName" class="form-control" placeholder="Your name (visible)" value="Captain" />
-              <input id="chatMsg" class="form-control" placeholder="Message" />
-              <button class="btn btn-primary" id="chatSendBtn">Send</button>
-            </div>
-            <small class="small-note">Only messages posted here are saved to the ChatBoard sheet.</small>
-          </div>
-        </div>
-
-        <div class="card-slim mt-3">
-          <h6>Sticky / Quick Note</h6>
-          <textarea id="stickyNote" class="form-control" rows="6" placeholder="Quick note — saved locally only"></textarea>
-          <div class="d-flex justify-content-end mt-2">
-            <button class="btn btn-outline-secondary me-2" onclick="localStorage.removeItem('stickyNote'); document.getElementById('stickyNote').value='';">Clear</button>
-            <button class="btn btn-primary" onclick="saveSticky()">Save</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- Sections: Vessel Join / Arrivals / Updates / Memo / Training / PNI ---------- -->
-  <!-- Vessel Join -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Vessel Crew Joining</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('vesselJoin','Vessel_Join')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('vesselJoin')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="vjVessel">
-        <input class="form-control" placeholder="Port" id="vjPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="vjNo">
-        <input class="form-control" placeholder="Rank" id="vjRank">
-        <input class="form-control" placeholder="Depart Date" type="date" id="vjDate">
-        <input class="form-control" placeholder="Flight" id="vjFlight">
-        <button class="btn btn-success" id="vjAddBtn">Add</button>
-        <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="vj_list" class="card-slim"></div>
-  </section>
-
-  <!-- Arriving Crew -->
-  <section id="arrivingCrew" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Arriving Crew</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('arrivingCrew','Arrivals')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('arrivingCrew')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Vessel" id="acVessel">
-        <input class="form-control" placeholder="Port" id="acPort">
-        <input class="form-control" placeholder="No. of Crew" type="number" id="acNo">
-        <input class="form-control" placeholder="Rank" id="acRank">
-        <input class="form-control" placeholder="Arrival Date" type="date" id="acDate">
-        <input class="form-control" placeholder="Flight" id="acFlight">
-        <button class="btn btn-success" id="acAddBtn">Add</button>
-        <button class="btn btn-secondary" id="acResetBtn">Reset</button>
-      </div>
-    </div>
-
-    <div id="ac_list" class="card-slim"></div>
-  </section>
-
-  <!-- Daily Updates -->
-  <section id="dailyUpdates" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Daily Updates</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('dailyUpdates','Daily_Updates')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('dailyUpdates')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="duTitle">
-        <input class="form-control" placeholder="Details" id="duDetails">
-        <input class="form-control" type="date" id="duDate">
-        <button class="btn btn-success" id="duAddBtn">Add</button>
-        <button class="btn btn-secondary" id="duResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="du_list" class="card-slim"></div>
-  </section>
-
-  <!-- Memo -->
-  <section id="memo" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Memo</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('memo','Memo')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('memo')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Title" id="mTitle">
-        <input class="form-control" placeholder="Details" id="mDetails">
-        <input class="form-control" type="date" id="mDate">
-        <button class="btn btn-success" id="mAddBtn">Add</button>
-        <button class="btn btn-secondary" id="mResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="m_list" class="card-slim"></div>
-  </section>
-
-  <!-- Training -->
-  <section id="training" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>Training</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('training','Training')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('training')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="tSubject">
-        <input class="form-control" placeholder="Details" id="tDetails">
-        <input class="form-control" type="date" id="tDate">
-        <button class="btn btn-success" id="tAddBtn">Add</button>
-        <button class="btn btn-secondary" id="tResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="t_list" class="card-slim"></div>
-  </section>
-
-  <!-- PnI -->
-  <section id="pni" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>P&amp;I / Events</h4>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('pni','PNI_Events')">Export PDF</button>
-        <button class="btn btn-outline-danger btn-sm" onclick="clearSection('pni')">Clear All (local)</button>
-      </div>
-    </div>
-
-    <div class="card-slim mb-3">
-      <div class="form-row">
-        <input class="form-control" placeholder="Subject" id="pSubject">
-        <input class="form-control" placeholder="Details" id="pDetails">
-        <input class="form-control" type="date" id="pDate">
-        <button class="btn btn-success" id="pAddBtn">Add</button>
-        <button class="btn btn-secondary" id="pResetBtn">Reset</button>
-      </div>
-    </div>
-    <div id="p_list" class="card-slim"></div>
-  </section>
-
-  <!-- HELP / USER GUIDE -->
-  <section id="helpSection" class="section" style="display:none">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h4>User Guide / Help</h4>
-      <button class="btn btn-outline-primary btn-sm" onclick="printSectionPDF('helpSection','User_Guide')">Export PDF</button>
-    </div>
-
-    <div class="card-slim" style="font-size:14px; line-height:1.5">
-      <h5>SeaCrew Dashboard — Daily Routine Log (User Guide)</h5>
-      <ol>
-        <li>Login using your Username and Password (from Users sheet).</li>
-        <li>Use the sidebar to navigate sections. Add entries in the form at the top of each section.</li>
-        <li>To edit an entry, click the edit (pencil) icon — the form will populate. Update then press "Update".</li>
-        <li>To delete an entry, click the trash icon and confirm. Deleted entries are removed from the sheet.</li>
-        <li>ChatBoard posts a message to the ChatBoard sheet (sound and visual alert when new messages arrive).</li>
-        <li>Press "Sync now" to manually sync. Auto-sync occurs every 15 seconds.</li>
-        <li>Monthly PDF generates consolidated report (landscape, font-size 8) and includes a GM signature page.</li>
-      </ol>
-      <p class="small-note">If you want deletions to be archived (not permanently removed), ask me and I'll implement an "Archive" sheet behavior instead of deleting rows.</p>
-    </div>
-  </section>
-
-  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
+<div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 </main>
 
+<script>
 /* ============================================================
-   SeaCrew Dashboard — FINAL WORKING CLIENT SCRIPT
-   (Matches your Apps Script exactly)
+   CONFIG
 ===============================================================*/
-
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
+let userSession = null; // logged-in user info
+let autoSyncTimer = null;
 
-const SHEET_MAP = {
-  vesselJoin: "Vessel_join",
-  arrivingCrew: "Arrivals",
-  dailyUpdates: "Updates",
-  memo: "Memo",
-  training: "Training",
-  pni: "Pni",
-  chatBoard: "ChatBoard"
-};
+/* ============================================================
+   LOGIN OVERLAY
+===============================================================*/
+document.addEventListener("DOMContentLoaded", () => {
+  showLogin();
+  document.getElementById("loginBtn").addEventListener("click", login);
+  document.getElementById("logoutBtn").addEventListener("click", logout);
+});
 
-let currentUser = null;
-let localData = {};  
-let syncInterval = null;
-let chatInterval = null;
-
-/* ======================== JSONP ========================= */
-function jsonp(url, callback) {
-  const cbName = "cb" + Math.floor(Math.random() * 999999999);
-  window[cbName] = function(res) {
-    callback(res);
-    delete window[cbName];
-    script.remove();
-  };
-
-  const script = document.createElement("script");
-  script.src = url.replace("callback=callback", "callback=" + cbName);
-  document.body.appendChild(script);
-}
-
-/* ======================== LOGIN ========================= */
 function showLogin() {
   document.getElementById("loginOverlay").style.display = "flex";
 }
@@ -424,222 +172,503 @@ function hideLogin() {
 }
 
 function login() {
-  const user = document.getElementById("loginUser").value.trim();
-  const pass = document.getElementById("loginPass").value.trim();
-  const msg = document.getElementById("loginMsg");
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value.trim();
+  const loginMsg = document.getElementById("loginMsg");
 
-  if (!user || !pass) {
-    msg.innerText = "Enter username and password";
-    return;
-  }
+  if (!username || !password) { loginMsg.innerText = "Enter username and password"; return; }
 
-  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&callback=callback`;
-
-  jsonp(url, function(res) {
-    if (res.status === "success") {
-      currentUser = res.username;
-      hideLogin();
-      document.getElementById("logoutBtn").style.display = "inline-block";
-      startAutoSync();
-      startChatPolling();
-      loadAllPreviews();
-    } else {
-      msg.innerText = "Invalid username or password";
-    }
-  });
+  fetch(`${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=loginCallback`)
+    .then(res => res.text())
+    .then(txt => {
+      eval(txt); // executes loginCallback({...})
+    });
 }
 
-document.getElementById("loginBtn").addEventListener("click", login);
+// JSONP callback
+function loginCallback(resp) {
+  const loginMsg = document.getElementById("loginMsg");
+  if (resp.status === "success") {
+    userSession = resp;
+    hideLogin();
+    document.getElementById("logoutBtn").style.display = "inline-block";
+    startAutoSync();
+    loadAllSections();
+  } else {
+    loginMsg.innerText = resp.message || "Login failed";
+  }
+}
 
 function logout() {
-  currentUser = null;
-  stopAutoSync();
-  stopChatPolling();
+  userSession = null;
+  document.getElementById("logoutBtn").style.display = "none";
   showLogin();
+  clearAllLocal();
+  stopAutoSync();
 }
 
-/* ======================== NAVIGATION ========================= */
+/* ============================================================
+   NAVIGATION
+===============================================================*/
 function navTo(e, sectionId) {
   e.preventDefault();
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-  document.getElementById(sectionId).style.display = "block";
-
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
-  e.currentTarget.classList.add("active");
+  navToElement(sectionId);
 }
 
 function navToElement(sectionId) {
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-  document.getElementById(sectionId).style.display = "block";
-}
-
-/* ======================== FETCH SHEET ========================= */
-function fetchSheet(section, callback) {
-  const sheetName = SHEET_MAP[section];
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheetName}&callback=callback`;
-
-  jsonp(url, function(res) {
-    if (res.status === "success") callback(res.data);
-    else callback([]);
+  document.querySelectorAll(".section").forEach(s => {
+    s.style.display = s.id === sectionId ? "block" : "none";
+  });
+  document.querySelectorAll(".sidebar a").forEach(a => {
+    a.classList.toggle("active", a.dataset.target === sectionId);
   });
 }
 
-/* ======================== LOAD PREVIEWS ========================= */
-function loadAllPreviews() {
-  const sections = ["vesselJoin", "arrivingCrew", "dailyUpdates", "memo", "training", "pni"];
-
-  sections.forEach(sec => {
-    fetchSheet(sec, (rows) => {
-      localData[sec] = rows;
-      renderPreview(sec, rows);
-    });
+/* ============================================================
+   FETCH AND RENDER SECTIONS
+===============================================================*/
+function loadAllSections() {
+  fetchAll(["Vessel_join","Arrivals","Updates","Memo","Training","Pni","ChatBoard"], (resp) => {
+    if (resp.status==="success") {
+      renderSection("vesselJoin", resp.data.Vessel_join);
+      renderSection("arrivingCrew", resp.data.Arrivals);
+      renderSection("dailyUpdates", resp.data.Updates);
+      renderSection("memo", resp.data.Memo);
+      renderSection("training", resp.data.Training);
+      renderSection("pni", resp.data.Pni);
+      renderChatBoard(resp.data.ChatBoard);
+    }
   });
-
-  document.getElementById("lastSync").innerText = new Date().toLocaleTimeString();
 }
 
-function renderPreview(section, rows) {
-  let container = "";
-  let countBox = "";
+function fetchAll(sheetArr, callback) {
+  const sheetsParam = sheetArr.join(",");
+  fetch(`${SCRIPT_URL}?action=fetchall&sheets=${encodeURIComponent(sheetsParam)}&callback=fetchAllCallback`)
+    .then(res => res.text())
+    .then(txt => eval(txt)); // calls fetchAllCallback(resp)
+}
 
-  if (section === "vesselJoin") { container = "vesselPreviewSmall"; countBox = "countVessel"; }
-  if (section === "arrivingCrew") { container = "arrivalsPreviewSmall"; countBox = "countArrivals"; }
-  if (section === "dailyUpdates") { container = "updatesPreviewSmall"; countBox = "countUpdates"; }
-  if (section === "memo") { container = "memoPreviewSmall"; countBox = "countMemo"; }
-  if (section === "training") { container = "trainingPreviewSmall"; countBox = "countTraining"; }
-  if (section === "pni") { container = "pniPreviewSmall"; countBox = "countPNI"; }
+function fetchAllCallback(resp) {
+  if (typeof lastFetchCallback === "function") lastFetchCallback(resp);
+}
 
-  const el = document.getElementById(container);
-  const ct = document.getElementById(countBox);
+let lastFetchCallback = null;
 
-  el.innerHTML = "";
-  ct.innerText = rows.length;
+/* ============================================================
+   APPEND / UPDATE / DELETE HANDLERS
+===============================================================*/
+function appendRow(sheet, rowData, callback) {
+  fetch(`${SCRIPT_URL}?action=append_uid&sheet=${sheet}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=appendCallback`)
+    .then(res => res.text()).then(txt => eval(txt));
+  lastAppendCallback = callback;
+}
+let lastAppendCallback = null;
+function appendCallback(resp) { if(lastAppendCallback) lastAppendCallback(resp); }
 
-  if (rows.length === 0) {
-    el.innerHTML = "<small>No entries</small>";
-    return;
+function updateRow(sheet, uid, rowData, callback) {
+  fetch(`${SCRIPT_URL}?action=update_uid&sheet=${sheet}&uid=${encodeURIComponent(uid)}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=updateCallback`)
+    .then(res => res.text()).then(txt => eval(txt));
+  lastUpdateCallback = callback;
+}
+let lastUpdateCallback = null;
+function updateCallback(resp) { if(lastUpdateCallback) lastUpdateCallback(resp); }
+
+function deleteRow(sheet, uid, callback) {
+  fetch(`${SCRIPT_URL}?action=delete_uid&sheet=${sheet}&uid=${encodeURIComponent(uid)}&callback=deleteCallback`)
+    .then(res => res.text()).then(txt => eval(txt));
+  lastDeleteCallback = callback;
+}
+let lastDeleteCallback = null;
+function deleteCallback(resp) { if(lastDeleteCallback) lastDeleteCallback(resp); }
+
+/* ============================================================
+   RENDER FUNCTIONS
+===============================================================*/
+function renderSection(sectionId, data) {
+  const containerId = {
+    vesselJoin: "vj_list",
+    arrivingCrew: "ac_list",
+    dailyUpdates: "du_list",
+    memo: "m_list",
+    training: "t_list",
+    pni: "p_list"
+  }[sectionId];
+
+  if (!containerId) return;
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+
+  data.forEach(item => {
+    const uid = item.UID || item.uid || Math.random().toString(36).substr(2,8);
+    const row = document.createElement("div");
+    row.className = "row-entry";
+    row.innerHTML = `<div class="left">${Object.keys(item).filter(k=>k!=="UID").map(k=>`${k}: ${item[k]}`).join(", ")}</div>
+                     <div class="right">
+                        <button class="btn btn-sm btn-warning" onclick='editRow("${sectionId}","${uid}")'><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick='deleteRowConfirm("${sectionId}","${uid}")'><i class="fa-solid fa-trash"></i></button>
+                     </div>`;
+    container.appendChild(row);
+  });
+}
+
+/* ============================================================
+   EDIT / DELETE
+===============================================================*/
+function editRow(sectionId, uid) {
+  alert(`Edit not implemented yet for ${sectionId}, UID: ${uid}`);
+}
+
+function deleteRowConfirm(sectionId, uid) {
+  if (confirm("Are you sure you want to delete this entry? It will be archived.")) {
+    const sheetName = {
+      vesselJoin:"Vessel_join",
+      arrivingCrew:"Arrivals",
+      dailyUpdates:"Updates",
+      memo:"Memo",
+      training:"Training",
+      pni:"Pni"
+    }[sectionId];
+    deleteRow(sheetName, uid, () => { loadAllSections(); });
   }
+}
 
-  rows.slice(-5).forEach(r => {
+/* ============================================================
+   CHATBOARD
+===============================================================*/
+function renderChatBoard(data) {
+  const log = document.getElementById("chatLog");
+  log.innerHTML = "";
+  data.forEach(item => {
     const div = document.createElement("div");
-    div.className = "row-entry";
-    div.innerHTML = `
-      <div class="left">${Object.values(r).join(" | ")}</div>
-    `;
-    el.appendChild(div);
+    div.innerHTML = `<strong>${item.Name || "Anon"}:</strong> ${item.Message || ""}`;
+    log.appendChild(div);
   });
 }
 
-/* ======================== AUTO SYNC ========================= */
+document.getElementById("chatSendBtn").addEventListener("click", () => {
+  const name = document.getElementById("chatName").value.trim() || "Anon";
+  const msg = document.getElementById("chatMsg").value.trim();
+  if(!msg) return;
+  appendRow("ChatBoard", {Name:name,Message:msg}, () => { loadAllSections(); document.getElementById("chatMsg").value=""; });
+});
+
+/* ============================================================
+   STICKY NOTE
+===============================================================*/
+function saveSticky() {
+  localStorage.setItem("stickyNote", document.getElementById("stickyNote").value);
+}
+
+/* ============================================================
+   AUTO SYNC
+===============================================================*/
 function startAutoSync() {
-  if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(loadAllPreviews, 15000);
+  if (autoSyncTimer) clearInterval(autoSyncTimer);
+  autoSyncTimer = setInterval(loadAllSections,15000);
 }
 
 function stopAutoSync() {
-  if (syncInterval) clearInterval(syncInterval);
+  if(autoSyncTimer) clearInterval(autoSyncTimer);
 }
 
-function manualSync() {
-  loadAllPreviews();
-}
-
-/* ======================== CHATBOARD ========================= */
-function startChatPolling() {
-  if (chatInterval) clearInterval(chatInterval);
-
-  loadChatBoard();
-  chatInterval = setInterval(loadChatBoard, 8000);
-}
-
-function stopChatPolling() {
-  if (chatInterval) clearInterval(chatInterval);
-}
-
-function loadChatBoard() {
-  const url = `${SCRIPT_URL}?action=fetch&sheet=ChatBoard&callback=callback`;
-
-  jsonp(url, function(res) {
-    const log = document.getElementById("chatLog");
-    log.innerHTML = "";
-
-    if (!res || !res.data) return;
-
-    res.data.slice(-50).forEach(m => {
-      const row = document.createElement("div");
-      row.innerHTML = `<strong>${m.name || "User"}</strong>: ${m.message} <small style="color:#777">[${m.timestamp}]</small>`;
-      log.appendChild(row);
-    });
-
-    log.scrollTop = log.scrollHeight;
-  });
-}
-
-document.getElementById("chatSendBtn").addEventListener("click", function() {
-  if (!currentUser) return alert("Login required");
-  const name = document.getElementById("chatName").value.trim() || currentUser;
-  const message = document.getElementById("chatMsg").value.trim();
-
-  if (!message) return;
-
-  const payload = {
-    name: name,
-    message: message,
-    timestamp: new Date().toLocaleString()
+/* ============================================================
+   PDF EXPORT
+===============================================================*/
+function printSectionPDF(sectionId, filename, includeAll=false) {
+  const doc = new jspdf.jsPDF('landscape');
+  const sections = {
+    vesselJoin:"Vessel_join",
+    arrivingCrew:"Arrivals",
+    dailyUpdates:"Updates",
+    memo:"Memo",
+    training:"Training",
+    pni:"Pni"
   };
 
-  const url = `${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(JSON.stringify(payload))}&callback=callback`;
+  const sheetName = sections[sectionId];
+  if(!sheetName) { alert("No PDF mapping for this section"); return; }
 
-  jsonp(url, function(res) {
-    if (res.status === "success") {
-      document.getElementById("chatMsg").value = "";
-      loadChatBoard();
-    }
-  });
-});
-
-/* ======================== MONTHLY PDF ========================= */
-function printSectionPDF(section, filename, includeArchive = true) {
-  const sheet = SHEET_MAP[section];
-
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
-
-  jsonp(url, function(res) {
-    if (!res || !res.data) {
-      alert("No data");
-      return;
-    }
-
-    const data = res.data;
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: "landscape" });
-    doc.setFontSize(8);
-
-    const headers = Object.keys(data[0]);
-    const rows = data.map(r => headers.map(h => r[h]));
-
-    doc.autoTable({ head: [headers], body: rows });
-
-    doc.addPage();
-    doc.text("General Manager Signature Page", 20, 40);
-
-    doc.save(filename + ".pdf");
-  });
+  fetch(`${SCRIPT_URL}?action=fetchall&sheets=${sheetName}&callback=pdfCallback`);
+  window.pdfDoc = doc; // temp global for JSONP callback
+  window.pdfFilename = filename;
 }
 
-/* ======================== GLOBAL EXPORT ========================= */
-window.navTo = navTo;
-window.navToElement = navToElement;
-window.manualSync = manualSync;
-window.printSectionPDF = printSectionPDF;
-window.clearAllLocal = function() {
-  localData = {};
-  alert("Local cache cleared");
-};
-window.logout = logout;
+function pdfCallback(resp) {
+  if(!window.pdfDoc || !window.pdfFilename) return;
+  const doc = window.pdfDoc;
+  const filename = window.pdfFilename;
+  const data = resp.data[Object.keys(resp.data)[0]] || [];
 
-/* ======================== INIT ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  showLogin();
+  if(data.length>0){
+    const headers = Object.keys(data[0]).filter(k=>k!=="UID");
+    const rows = data.map(r=>headers.map(h=>r[h]));
+    doc.autoTable({ head:[headers], body:rows, styles:{ fontSize:8 } });
+  }
+
+  doc.save(`${filename}.pdf`);
+  window.pdfDoc=null;
+  window.pdfFilename=null;
+}
+
+/* ============================================================
+   LOCAL STORAGE CLEAR
+===============================================================*/
+function clearAllLocal() {
+  localStorage.clear();
+}
+  <script>
+/* ============================================================
+   CONFIG
+=========================================================== */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
+let userInfo = null; // store logged in user info
+
+/* ============================================================
+   UTILITY FUNCTIONS
+=========================================================== */
+function navTo(e, sectionId) {
+  e.preventDefault();
+  document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+  const el = document.getElementById(sectionId);
+  if (el) el.style.display = 'block';
+
+  // update sidebar active link
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  const targetLink = document.querySelector(`.sidebar a[data-target="${sectionId}"]`);
+  if (targetLink) targetLink.classList.add('active');
+}
+
+function navToElement(sectionId) { 
+  const el = document.getElementById(sectionId); 
+  if(el) el.scrollIntoView({behavior:'smooth'}); 
+}
+
+function showMessage(msg, type='info') {
+  alert(msg); // simple for now, can replace with toast
+}
+
+/* ============================================================
+   LOGIN HANDLER
+=========================================================== */
+function showLogin() {
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
+
+function hideLogin() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'inline-block';
+}
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+
+  if(!username || !password) { showMessage("Enter Username and Password"); return; }
+
+  const res = await fetch(`${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`);
+  const txt = await res.text();
+  const data = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
+
+  if(data.status === "success") {
+    userInfo = data;
+    hideLogin();
+    showMessage(`Welcome ${userInfo.username}`);
+    fetchAllSections(); // load initial data
+  } else {
+    showMessage(data.message);
+  }
 });
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  userInfo = null;
+  showLogin();
+  document.getElementById('logoutBtn').style.display = 'none';
+});
+
+/* ============================================================
+   FETCH DATA FROM SHEETS
+=========================================================== */
+async function fetchSheet(sheetName) {
+  const res = await fetch(`${SCRIPT_URL}?action=fetch&sheet=${sheetName}&callback=callback`);
+  const txt = await res.text();
+  const data = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
+  return data.status === "success" ? data.data : [];
+}
+
+async function fetchAllSections() {
+  const sheets = ['Vessel_join','Arrivals','Updates','Memo','Training','Pni','ChatBoard'];
+  const data = await fetch(`${SCRIPT_URL}?action=fetchall&sheets=${sheets.join(',')}&callback=callback`);
+  const txt = await data.text();
+  const obj = JSON.parse(txt.replace(/^callback\(/,'').replace(/\);$/,''));
+
+  if(obj.status === "success") {
+    updatePreview('vesselJoin', obj.data.Vessel_join || []);
+    updatePreview('arrivingCrew', obj.data.Arrivals || []);
+    updatePreview('dailyUpdates', obj.data.Updates || []);
+    updatePreview('memo', obj.data.Memo || []);
+    updatePreview('training', obj.data.Training || []);
+    updatePreview('pni', obj.data.Pni || []);
+    updateChatBoard(obj.data.ChatBoard || []);
+  }
+}
+
+/* ============================================================
+   PREVIEW TABLE UPDATES
+=========================================================== */
+function updatePreview(section, rows) {
+  const containerMap = {
+    vesselJoin: 'vesselPreviewSmall',
+    arrivingCrew: 'arrivalsPreviewSmall',
+    dailyUpdates: 'updatesPreviewSmall',
+    memo: 'memoPreviewSmall',
+    training: 'trainingPreviewSmall',
+    pni: 'pniPreviewSmall'
+  };
+  const countMap = {
+    vesselJoin: 'countVessel',
+    arrivingCrew: 'countArrivals',
+    dailyUpdates: 'countUpdates',
+    memo: 'countMemo',
+    training: 'countTraining',
+    pni: 'countPNI'
+  };
+
+  const container = document.getElementById(containerMap[section]);
+  if(!container) return;
+
+  container.innerHTML = rows.map(r => {
+    return `<div class="row-entry">
+      <div class="left">${Object.values(r).join(' | ')}</div>
+      <div class="right">
+        <button class="btn btn-sm btn-warning" onclick="editRow('${section}', '${r.UID}')"><i class="fa fa-pencil"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRow('${section}', '${r.UID}')"><i class="fa fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+  
+  if(countMap[section]) document.getElementById(countMap[section]).innerText = rows.length;
+}
+
+/* ============================================================
+   CHATBOARD
+=========================================================== */
+function updateChatBoard(rows) {
+  const chatLog = document.getElementById('chatLog');
+  chatLog.innerHTML = rows.map(r => `<div><b>${r.Name}:</b> ${r.Message}</div>`).join('');
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+document.getElementById('chatSendBtn').addEventListener('click', async () => {
+  const name = document.getElementById('chatName').value || 'Anonymous';
+  const msg = document.getElementById('chatMsg').value;
+  if(!msg) return;
+  
+  const row = JSON.stringify([new Date().toLocaleString(), name, msg]);
+  await fetch(`${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(row)}&callback=callback`);
+  document.getElementById('chatMsg').value = '';
+  fetchAllSections();
+});
+
+/* ============================================================
+   ADD / RESET BUTTONS
+=========================================================== */
+function setupAddReset(section, addBtnId, resetBtnId, inputIds, sheetName) {
+  const addBtn = document.getElementById(addBtnId);
+  const resetBtn = document.getElementById(resetBtnId);
+
+  addBtn.addEventListener('click', async () => {
+    const row = inputIds.map(id => document.getElementById(id).value || '');
+    await fetch(`${SCRIPT_URL}?action=append_uid&sheet=${sheetName}&row=${encodeURIComponent(JSON.stringify(row))}&callback=callback`);
+    inputIds.forEach(id => document.getElementById(id).value = '');
+    fetchAllSections();
+  });
+
+  resetBtn.addEventListener('click', () => inputIds.forEach(id => document.getElementById(id).value=''));
+}
+
+/* ============================================================
+   EDIT / DELETE
+=========================================================== */
+async function deleteRow(section, uid) {
+  if(!confirm("Delete this entry?")) return;
+  await fetch(`${SCRIPT_URL}?action=delete_uid&sheet=${mapSectionToSheet(section)}&uid=${uid}&callback=callback`);
+  fetchAllSections();
+}
+
+function editRow(section, uid) {
+  // populate the form fields if needed
+  // optional: can store UID in a hidden field for update
+  alert(`Edit not implemented in this demo. UID=${uid}`);
+}
+
+function mapSectionToSheet(section) {
+  return {
+    vesselJoin: 'Vessel_join',
+    arrivingCrew: 'Arrivals',
+    dailyUpdates: 'Updates',
+    memo: 'Memo',
+    training: 'Training',
+    pni: 'Pni'
+  }[section];
+}
+
+/* ============================================================
+   STICKY NOTES
+=========================================================== */
+function saveSticky() {
+  localStorage.setItem('stickyNote', document.getElementById('stickyNote').value);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Load sticky note
+  const sticky = localStorage.getItem('stickyNote');
+  if(sticky) document.getElementById('stickyNote').value = sticky;
+
+  // Show login first
+  showLogin();
+
+  // Setup add/reset buttons
+  setupAddReset('vesselJoin','vjAddBtn','vjResetBtn',['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight'],'Vessel_join');
+  setupAddReset('arrivingCrew','acAddBtn','acResetBtn',['acVessel','acPort','acNo','acRank','acDate','acFlight'],'Arrivals');
+  setupAddReset('dailyUpdates','duAddBtn','duResetBtn',['duTitle','duDetails','duDate'],'Updates');
+  setupAddReset('memo','mAddBtn','mResetBtn',['mTitle','mDetails','mDate'],'Memo');
+  setupAddReset('training','tAddBtn','tResetBtn',['tSubject','tDetails','tDate'],'Training');
+  setupAddReset('pni','pAddBtn','pResetBtn',['pSubject','pDetails','pDate'],'Pni');
+});
+
+/* ============================================================
+   PDF EXPORT
+=========================================================== */
+async function printSectionPDF(section, filename, includeArchived=false) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+  doc.setFontSize(8);
+
+  // fetch main sheet data
+  const sheetName = mapSectionToSheet(section) || section;
+  let rows = await fetchSheet(sheetName);
+
+  // if includeArchived requested
+  if(includeArchived) {
+    const archiveRows = await fetchSheet('Archive_' + sheetName);
+    rows = rows.concat(archiveRows);
+  }
+
+  if(rows.length===0) { showMessage("No data to export"); return; }
+
+  const headers = Object.keys(rows[0]);
+  const body = rows.map(r => headers.map(h => r[h]));
+
+  doc.autoTable({head:[headers], body});
+  doc.save(filename+'.pdf');
+}
+
+/* ============================================================
+   MANUAL SYNC / CLEAR LOCAL
+=========================================================== */
+function manualSync() { fetchAllSections(); }
+function clearAllLocal() { localStorage.clear(); showMessage("Local storage cleared"); }
+
+</script>
+</body>
+</html>
