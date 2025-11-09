@@ -378,9 +378,13 @@
   <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 </main>
 
-<script>
-/* ===== SeaCrew Dashboard — Final Client Script (matches provided Apps Script) ===== */
+/* ============================================================
+   SeaCrew Dashboard — FINAL WORKING CLIENT SCRIPT
+   (Matches your Apps Script exactly)
+===============================================================*/
+
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
+
 const SHEET_MAP = {
   vesselJoin: "Vessel_join",
   arrivingCrew: "Arrivals",
@@ -388,482 +392,254 @@ const SHEET_MAP = {
   memo: "Memo",
   training: "Training",
   pni: "Pni",
-  chatBoard: "ChatBoard",
-  users: "Users",
-  archivePrefix: "Archive_"
+  chatBoard: "ChatBoard"
 };
 
 let currentUser = null;
-let localData = {}; // cache including archived when fetched
+let localData = {};  
 let syncInterval = null;
-let chatPoll = null;
-let lastChatTs = 0;
+let chatInterval = null;
 
-// JSONP helper (uses server's callback=callback param placeholder)
-function jsonpRequest(url, timeout = 10000) {
-  return new Promise((resolve, reject) => {
-    const cb = "cb" + Math.floor(Math.random() * 1e9);
-    window[cb] = function(res) {
-      cleanup();
-      resolve(res);
-    };
-    function cleanup() {
-      try { delete window[cb]; } catch(e){ window[cb] = undefined; }
-      if (script.parentNode) script.parentNode.removeChild(script);
-      clearTimeout(timer);
-    }
-    const script = document.createElement('script');
-    script.src = url.replace("callback=callback", "callback=" + cb);
-    script.onerror = function(err) {
-      cleanup();
-      reject(new Error("JSONP script error"));
-    };
-    document.body.appendChild(script);
-    const timer = setTimeout(function() {
-      cleanup();
-      reject(new Error("JSONP timeout"));
-    }, timeout);
-  });
-}
-
-// ----------------- LOGIN -----------------
-function showLogin() { document.getElementById('loginOverlay').style.display = 'flex'; }
-function hideLogin() { document.getElementById('loginOverlay').style.display = 'none'; }
-
-async function login() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
-  const msgEl = document.getElementById('loginMsg');
-  msgEl.innerText = '';
-  if (!username || !password) { msgEl.innerText = "Enter username and password"; return; }
-  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=callback`;
-  try {
-    const res = await jsonpRequest(url);
-    if (res && (res.status === 'success' || res.success)) {
-      currentUser = res.username || username;
-      hideLogin();
-      document.getElementById('logoutBtn').style.display = 'inline-block';
-      startAutoSync();
-      startChatPolling();
-      await loadAllPreviews();
-    } else {
-      msgEl.innerText = res && (res.message || res.error) ? res.message || res.error : "Login failed";
-      console.warn("Auth response:", res);
-    }
-  } catch (err) {
-    console.error("Login error", err);
-    msgEl.innerText = "Login error — check console";
-  }
-}
-document.getElementById('loginBtn')?.addEventListener('click', login);
-document.getElementById('logoutBtn')?.addEventListener('click', logout);
-
-function logout() {
-  currentUser = null;
-  document.getElementById('logoutBtn').style.display = 'none';
-  showLogin();
-  stopAutoSync();
-  stopChatPolling();
-  clearPreviewsUI();
-}
-
-// ----------------- FETCH / PREVIEWS -----------------
-async function fetchSheet(section) {
-  const sheet = SHEET_MAP[section];
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${encodeURIComponent(sheet)}&callback=callback`;
-  try {
-    const res = await jsonpRequest(url);
-    if (res && res.status === 'success' || res && res.success) return res.data || [];
-    // sometimes response may be direct array; handle that
-    if (Array.isArray(res)) return res;
-    console.warn("fetchSheet unexpected response", section, res);
-    return [];
-  } catch (err) {
-    console.error("fetchSheet error", section, err);
-    return [];
-  }
-}
-
-async function loadAllPreviews() {
-  const sections = ['vesselJoin','arrivingCrew','dailyUpdates','memo','training','pni'];
-  await Promise.all(sections.map(async s => {
-    const data = await fetchSheet(s);
-    localData[s] = data.map(r => {
-      // normalize archived flag and ensure uid property
-      r.archived = !!(r.archived === true || String(r.archived).toLowerCase() === 'true' || String(r.archived) === '1');
-      // unify UID property keys
-      r.uid = r.UID || r.uid || r.Id || r.id || r.ID || null;
-      return r;
-    });
-    renderPreview(s, localData[s].filter(x=>!x.archived));
-  }));
-  const lastSync = document.getElementById('lastSync');
-  if (lastSync) lastSync.innerText = new Date().toLocaleString();
-}
-
-// ----------------- RENDER PREVIEW (inline edit + delete) -----------------
-function renderPreview(section, data) {
-  const containerMap = {
-    vesselJoin:'vesselPreviewSmall',
-    arrivingCrew:'arrivalsPreviewSmall',
-    dailyUpdates:'updatesPreviewSmall',
-    memo:'memoPreviewSmall',
-    training:'trainingPreviewSmall',
-    pni:'pniPreviewSmall'
+/* ======================== JSONP ========================= */
+function jsonp(url, callback) {
+  const cbName = "cb" + Math.floor(Math.random() * 999999999);
+  window[cbName] = function(res) {
+    callback(res);
+    delete window[cbName];
+    script.remove();
   };
-  const countMap = {
-    vesselJoin:'countVessel',
-    arrivingCrew:'countArrivals',
-    dailyUpdates:'countUpdates',
-    memo:'countMemo',
-    training:'countTraining',
-    pni:'countPNI'
-  };
-  const container = document.getElementById(containerMap[section]);
-  const countEl = document.getElementById(countMap[section]);
-  if(!container) return;
-  container.innerHTML = '';
-  if(!data || data.length === 0) {
-    container.innerHTML = '<small>No entries</small>';
-    if(countEl) countEl.innerText = '0';
+
+  const script = document.createElement("script");
+  script.src = url.replace("callback=callback", "callback=" + cbName);
+  document.body.appendChild(script);
+}
+
+/* ======================== LOGIN ========================= */
+function showLogin() {
+  document.getElementById("loginOverlay").style.display = "flex";
+}
+
+function hideLogin() {
+  document.getElementById("loginOverlay").style.display = "none";
+}
+
+function login() {
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value.trim();
+  const msg = document.getElementById("loginMsg");
+
+  if (!user || !pass) {
+    msg.innerText = "Enter username and password";
     return;
   }
 
-  data.slice(-5).forEach(row => {
-    const div = document.createElement('div');
-    div.className = 'row-entry';
+  const url = `${SCRIPT_URL}?action=auth&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&callback=callback`;
 
-    // Build small inline inputs from row keys (skip archived/uid)
-    const left = document.createElement('div');
-    left.className = 'left';
-    const keys = Object.keys(row).filter(k => !['archived','UID','uid','Id','id','ID'].includes(k));
-    keys.forEach(k => {
-      const val = row[k] === undefined || row[k] === null ? '' : row[k];
-      const input = document.createElement('input');
-      input.className = 'edit-field form-control form-control-sm';
-      input.dataset.key = k;
-      input.value = val;
-      input.style.display = 'inline-block';
-      input.style.width = '120px';
-      input.style.marginRight = '6px';
-      left.appendChild(input);
-    });
-
-    const right = document.createElement('div');
-    right.className = 'right';
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'btn btn-sm btn-primary editBtn';
-    saveBtn.innerText = 'Save';
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn btn-sm btn-danger delBtn';
-    delBtn.innerText = 'Delete';
-    right.appendChild(saveBtn);
-    right.appendChild(delBtn);
-
-    div.appendChild(left);
-    div.appendChild(right);
-
-    // Save handler
-    saveBtn.addEventListener('click', async () => {
-      if(!currentUser) return alert('Login required');
-      const inputs = div.querySelectorAll('.edit-field');
-      const obj = {};
-      inputs.forEach(i => {
-        // use the exact key names shown (these are header-derived keys)
-        obj[i.dataset.key] = i.value;
-      });
-      // ensure UID present
-      obj.UID = row.uid || row.UID || obj.UID || obj.uid;
-      try {
-        const url = `${SCRIPT_URL}?action=update_uid&sheet=${encodeURIComponent(SHEET_MAP[section])}&uid=${encodeURIComponent(obj.UID)}&row=${encodeURIComponent(JSON.stringify(obj))}&callback=callback`;
-        const res = await jsonpRequest(url);
-        if (res && (res.status === 'success' || res.success)) {
-          await loadAllPreviews();
-        } else {
-          alert('Update failed — check console');
-          console.warn('update response', res);
-        }
-      } catch (err) {
-        console.error('Update error', err);
-        alert('Update error — check console');
-      }
-    });
-
-    // Delete/archive handler
-    delBtn.addEventListener('click', async () => {
-      if(!currentUser) return alert('Login required');
-      if(!confirm('Archive this entry?')) return;
-      try {
-        const url = `${SCRIPT_URL}?action=delete_uid&sheet=${encodeURIComponent(SHEET_MAP[section])}&uid=${encodeURIComponent(row.uid)}&callback=callback`;
-        const res = await jsonpRequest(url);
-        if (res && (res.status === 'success' || res.success)) {
-          await loadAllPreviews();
-        } else {
-          alert('Archive failed — check console');
-          console.warn('delete response', res);
-        }
-      } catch (err) {
-        console.error('Delete error', err);
-        alert('Delete error — check console');
-      }
-    });
-
-    container.appendChild(div);
-  });
-
-  if(countEl) countEl.innerText = String(data.length);
-}
-
-// ----------------- ADD ENTRY (build object from form fields) -----------------
-async function addEntry(section, formMap) {
-  if (!currentUser) return alert('Login required');
-  // formMap: object of friendly keys -> values (e.g. {vessel: 'MV Foo', port: 'MNL', noOfCrew: 5, ...})
-  // Build payload object; include user info
-  const payload = Object.assign({}, formMap, { createdBy: currentUser, createdAt: new Date().toISOString() });
-
-  const url = `${SCRIPT_URL}?action=append_uid&sheet=${encodeURIComponent(SHEET_MAP[section])}&row=${encodeURIComponent(JSON.stringify(payload))}&callback=callback`;
-  try {
-    const res = await jsonpRequest(url);
-    if (res && (res.status === 'success' || res.success)) {
-      // success; refresh previews
-      await loadAllPreviews();
-      return res;
+  jsonp(url, function(res) {
+    if (res.status === "success") {
+      currentUser = res.username;
+      hideLogin();
+      document.getElementById("logoutBtn").style.display = "inline-block";
+      startAutoSync();
+      startChatPolling();
+      loadAllPreviews();
     } else {
-      console.warn('addEntry response', res);
-      alert('Add failed — check console');
-      return res;
+      msg.innerText = "Invalid username or password";
     }
-  } catch (err) {
-    console.error('addEntry error', err);
-    alert('Add error — check console');
-    throw err;
-  }
-}
-
-// ----------------- WIRE ADD BUTTONS (calls addEntry with friendly keys) -----------------
-function wireAddButtons() {
-  document.getElementById('vjAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Vessel: document.getElementById('vjVessel').value,
-      Port: document.getElementById('vjPort').value,
-      NoOfCrew: document.getElementById('vjNo').value,
-      Rank: document.getElementById('vjRank').value,
-      DepartDate: document.getElementById('vjDate').value,
-      Flight: document.getElementById('vjFlight').value
-    };
-    addEntry('vesselJoin', values).then(()=> {
-      ['vjVessel','vjPort','vjNo','vjRank','vjDate','vjFlight'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-    }).catch(()=>{});
-  });
-
-  document.getElementById('acAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Vessel: document.getElementById('acVessel').value,
-      Port: document.getElementById('acPort').value,
-      NoOfCrew: document.getElementById('acNo').value,
-      Rank: document.getElementById('acRank').value,
-      ArrivalDate: document.getElementById('acDate').value,
-      Flight: document.getElementById('acFlight').value
-    };
-    addEntry('arrivingCrew', values).then(()=> {
-      ['acVessel','acPort','acNo','acRank','acDate','acFlight'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-    }).catch(()=>{});
-  });
-
-  document.getElementById('duAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Title: document.getElementById('duTitle').value,
-      Details: document.getElementById('duDetails').value,
-      Date: document.getElementById('duDate').value
-    };
-    addEntry('dailyUpdates', values).then(()=> { ['duTitle','duDetails','duDate'].forEach(id=>document.getElementById(id).value=''); }).catch(()=>{});
-  });
-
-  document.getElementById('mAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Title: document.getElementById('mTitle').value,
-      Details: document.getElementById('mDetails').value,
-      Date: document.getElementById('mDate').value
-    };
-    addEntry('memo', values).then(()=> { ['mTitle','mDetails','mDate'].forEach(id=>document.getElementById(id).value=''); }).catch(()=>{});
-  });
-
-  document.getElementById('tAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Subject: document.getElementById('tSubject').value,
-      Details: document.getElementById('tDetails').value,
-      Date: document.getElementById('tDate').value
-    };
-    addEntry('training', values).then(()=> { ['tSubject','tDetails','tDate'].forEach(id=>document.getElementById(id).value=''); }).catch(()=>{});
-  });
-
-  document.getElementById('pAddBtn')?.addEventListener('click', () => {
-    const values = {
-      Subject: document.getElementById('pSubject').value,
-      Details: document.getElementById('pDetails').value,
-      Date: document.getElementById('pDate').value
-    };
-    addEntry('pni', values).then(()=> { ['pSubject','pDetails','pDate'].forEach(id=>document.getElementById(id).value=''); }).catch(()=>{});
-  });
-}
-wireAddButtons();
-
-// ----------------- CHATBOARD (append row as object) -----------------
-document.getElementById('chatSendBtn')?.addEventListener('click', async () => {
-  if (!currentUser) return alert('Login required');
-  const name = document.getElementById('chatName').value.trim() || currentUser;
-  const message = document.getElementById('chatMsg').value.trim();
-  if (!message) return;
-  const payload = { name: name, message: message, timestamp: new Date().toISOString(), user: currentUser };
-  const url = `${SCRIPT_URL}?action=append_uid&sheet=${encodeURIComponent(SHEET_MAP.chatBoard)}&row=${encodeURIComponent(JSON.stringify(payload))}&callback=callback`;
-  try {
-    const res = await jsonpRequest(url);
-    if (res && (res.status === 'success' || res.success)) {
-      document.getElementById('chatMsg').value = '';
-      // load recent chat
-      await loadChatBoard();
-    } else {
-      console.warn('chat append response', res);
-      alert('Chat failed — check console');
-    }
-  } catch (err) {
-    console.error('chat error', err);
-    alert('Chat error — check console');
-  }
-});
-
-async function loadChatBoard() {
-  const sheet = SHEET_MAP.chatBoard;
-  const url = `${SCRIPT_URL}?action=fetch&sheet=${encodeURIComponent(sheet)}&callback=callback`;
-  try {
-    const res = await jsonpRequest(url);
-    let messages = (res && res.status === 'success' && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
-    // normalize and render
-    const log = document.getElementById('chatLog');
-    log.innerHTML = '';
-    messages = messages.filter(m => m && (m.name || m.message || m.msg));
-    messages.slice(-200).forEach(m => {
-      const when = m.timestamp || m.date || m.time || '';
-      const div = document.createElement('div');
-      div.innerHTML = `<strong>${m.name || 'Anon'}</strong>: ${m.message || m.msg || ''} <small style="color:#888">[${when}]</small>`;
-      log.appendChild(div);
-    });
-    log.scrollTop = log.scrollHeight;
-  } catch (err) {
-    console.error('loadChatBoard error', err);
-  }
-}
-
-function startChatPolling() {
-  if (chatPoll) clearInterval(chatPoll);
-  loadChatBoard();
-  chatPoll = setInterval(loadChatBoard, 10000);
-}
-function stopChatPolling() { if (chatPoll) clearInterval(chatPoll); }
-
-// ----------------- PDF export (includes Archive_<sheet> if includeArchived true) -----------------
-async function printSectionPDF(sectionId, filename, includeArchived=true) {
-  try {
-    // fetch main sheet
-    const sheetName = SHEET_MAP[sectionId];
-    let data = await fetchSheet(sectionId); // gets data objects
-    data = data || [];
-    if (includeArchived) {
-      // also try fetch Archive_<sheetName>
-      const archiveSheet = SHEET_MAP.archivePrefix + sheetName;
-      try {
-        const url = `${SCRIPT_URL}?action=fetch&sheet=${encodeURIComponent(archiveSheet)}&callback=callback`;
-        const arcRes = await jsonpRequest(url);
-        const arcData = (arcRes && arcRes.status === 'success') ? arcRes.data : (Array.isArray(arcRes) ? arcRes : []);
-        if (Array.isArray(arcData) && arcData.length) {
-          // mark archived rows
-          arcData.forEach(r => r.archived = true);
-          data = data.concat(arcData);
-        }
-      } catch (e) {
-        console.warn('No archive sheet or fetch error', e);
-      }
-    } else {
-      data = data.filter(d => !d.archived);
-    }
-    if (!data || data.length === 0) { alert('No data to export'); return; }
-
-    // build columns from union of keys (exclude archived flag)
-    const keys = Object.keys(data[0]).filter(k => k !== 'archived');
-    const rows = data.map(r => keys.map(k => r[k] === undefined || r[k] === null ? '' : String(r[k])));
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFontSize(8);
-    doc.autoTable({ head: [keys], body: rows, styles: { fontSize: 8 } });
-    // GM signature page
-    doc.addPage();
-    doc.setFontSize(12);
-    doc.text("GENERAL MANAGER SIGNATURE PAGE", 20, 40);
-    doc.save((filename || 'report') + '.pdf');
-  } catch (err) {
-    console.error('printSectionPDF error', err);
-    alert('Export failed — check console');
-  }
-}
-window.printSectionPDF = printSectionPDF; // expose to your HTML onclicks
-
-// ----------------- Auto-sync control -----------------
-function startAutoSync() {
-  if (syncInterval) clearInterval(syncInterval);
-  syncInterval = setInterval(loadAllPreviews, 15000);
-  loadAllPreviews();
-}
-function stopAutoSync() { if (syncInterval) clearInterval(syncInterval); }
-function manualSync() { loadAllPreviews(); }
-
-// ----------------- Sticky note -----------------
-function saveSticky() {
-  const v = document.getElementById('stickyNote')?.value || '';
-  localStorage.setItem('stickyNote', v);
-}
-document.getElementById('stickyNote')?.addEventListener('blur', saveSticky);
-
-// ----------------- Clear preview UI helper -----------------
-function clearPreviewsUI() {
-  ['vesselPreviewSmall','arrivalsPreviewSmall','updatesPreviewSmall','memoPreviewSmall','trainingPreviewSmall','pniPreviewSmall'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.innerHTML = '';
-  });
-  ['countVessel','countArrivals','countUpdates','countMemo','countTraining','countPNI'].forEach(id => {
-    const e = document.getElementById(id); if (e) e.innerText = '0';
   });
 }
 
-// ----------------- Init on DOMContentLoaded -----------------
-document.addEventListener('DOMContentLoaded', () => {
-  // load sticky
-  const saved = localStorage.getItem('stickyNote');
-  if (saved) document.getElementById('stickyNote').value = saved;
-  // show login immediately
+document.getElementById("loginBtn").addEventListener("click", login);
+
+function logout() {
+  currentUser = null;
+  stopAutoSync();
+  stopChatPolling();
   showLogin();
-  // wire manual sync and clear local (if your buttons use those global functions)
-  window.manualSync = manualSync;
-  window.clearAllLocal = function() {
-    if (confirm('Clear local cache?')) {
-      localData = {};
-      clearPreviewsUI();
-    }
-  };
-});
-  // ================= NAVIGATION =================
+}
+
+/* ======================== NAVIGATION ========================= */
 function navTo(e, sectionId) {
   e.preventDefault();
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
-  const el = document.getElementById(sectionId);
-  if (el) el.style.display = 'block';
-  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-  e.currentTarget.classList.add('active');
+  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.getElementById(sectionId).style.display = "block";
+
+  document.querySelectorAll(".sidebar a").forEach(a => a.classList.remove("active"));
+  e.currentTarget.classList.add("active");
 }
 
 function navToElement(sectionId) {
-  document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
-  const el = document.getElementById(sectionId);
-  if (el) el.style.display = 'block';
+  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.getElementById(sectionId).style.display = "block";
 }
 
-</script>
+/* ======================== FETCH SHEET ========================= */
+function fetchSheet(section, callback) {
+  const sheetName = SHEET_MAP[section];
+  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheetName}&callback=callback`;
+
+  jsonp(url, function(res) {
+    if (res.status === "success") callback(res.data);
+    else callback([]);
+  });
+}
+
+/* ======================== LOAD PREVIEWS ========================= */
+function loadAllPreviews() {
+  const sections = ["vesselJoin", "arrivingCrew", "dailyUpdates", "memo", "training", "pni"];
+
+  sections.forEach(sec => {
+    fetchSheet(sec, (rows) => {
+      localData[sec] = rows;
+      renderPreview(sec, rows);
+    });
+  });
+
+  document.getElementById("lastSync").innerText = new Date().toLocaleTimeString();
+}
+
+function renderPreview(section, rows) {
+  let container = "";
+  let countBox = "";
+
+  if (section === "vesselJoin") { container = "vesselPreviewSmall"; countBox = "countVessel"; }
+  if (section === "arrivingCrew") { container = "arrivalsPreviewSmall"; countBox = "countArrivals"; }
+  if (section === "dailyUpdates") { container = "updatesPreviewSmall"; countBox = "countUpdates"; }
+  if (section === "memo") { container = "memoPreviewSmall"; countBox = "countMemo"; }
+  if (section === "training") { container = "trainingPreviewSmall"; countBox = "countTraining"; }
+  if (section === "pni") { container = "pniPreviewSmall"; countBox = "countPNI"; }
+
+  const el = document.getElementById(container);
+  const ct = document.getElementById(countBox);
+
+  el.innerHTML = "";
+  ct.innerText = rows.length;
+
+  if (rows.length === 0) {
+    el.innerHTML = "<small>No entries</small>";
+    return;
+  }
+
+  rows.slice(-5).forEach(r => {
+    const div = document.createElement("div");
+    div.className = "row-entry";
+    div.innerHTML = `
+      <div class="left">${Object.values(r).join(" | ")}</div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+/* ======================== AUTO SYNC ========================= */
+function startAutoSync() {
+  if (syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(loadAllPreviews, 15000);
+}
+
+function stopAutoSync() {
+  if (syncInterval) clearInterval(syncInterval);
+}
+
+function manualSync() {
+  loadAllPreviews();
+}
+
+/* ======================== CHATBOARD ========================= */
+function startChatPolling() {
+  if (chatInterval) clearInterval(chatInterval);
+
+  loadChatBoard();
+  chatInterval = setInterval(loadChatBoard, 8000);
+}
+
+function stopChatPolling() {
+  if (chatInterval) clearInterval(chatInterval);
+}
+
+function loadChatBoard() {
+  const url = `${SCRIPT_URL}?action=fetch&sheet=ChatBoard&callback=callback`;
+
+  jsonp(url, function(res) {
+    const log = document.getElementById("chatLog");
+    log.innerHTML = "";
+
+    if (!res || !res.data) return;
+
+    res.data.slice(-50).forEach(m => {
+      const row = document.createElement("div");
+      row.innerHTML = `<strong>${m.name || "User"}</strong>: ${m.message} <small style="color:#777">[${m.timestamp}]</small>`;
+      log.appendChild(row);
+    });
+
+    log.scrollTop = log.scrollHeight;
+  });
+}
+
+document.getElementById("chatSendBtn").addEventListener("click", function() {
+  if (!currentUser) return alert("Login required");
+  const name = document.getElementById("chatName").value.trim() || currentUser;
+  const message = document.getElementById("chatMsg").value.trim();
+
+  if (!message) return;
+
+  const payload = {
+    name: name,
+    message: message,
+    timestamp: new Date().toLocaleString()
+  };
+
+  const url = `${SCRIPT_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(JSON.stringify(payload))}&callback=callback`;
+
+  jsonp(url, function(res) {
+    if (res.status === "success") {
+      document.getElementById("chatMsg").value = "";
+      loadChatBoard();
+    }
+  });
+});
+
+/* ======================== MONTHLY PDF ========================= */
+function printSectionPDF(section, filename, includeArchive = true) {
+  const sheet = SHEET_MAP[section];
+
+  const url = `${SCRIPT_URL}?action=fetch&sheet=${sheet}&callback=callback`;
+
+  jsonp(url, function(res) {
+    if (!res || !res.data) {
+      alert("No data");
+      return;
+    }
+
+    const data = res.data;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(8);
+
+    const headers = Object.keys(data[0]);
+    const rows = data.map(r => headers.map(h => r[h]));
+
+    doc.autoTable({ head: [headers], body: rows });
+
+    doc.addPage();
+    doc.text("General Manager Signature Page", 20, 40);
+
+    doc.save(filename + ".pdf");
+  });
+}
+
+/* ======================== GLOBAL EXPORT ========================= */
+window.navTo = navTo;
+window.navToElement = navToElement;
+window.manualSync = manualSync;
+window.printSectionPDF = printSectionPDF;
+window.clearAllLocal = function() {
+  localData = {};
+  alert("Local cache cleared");
+};
+window.logout = logout;
+
+/* ======================== INIT ========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  showLogin();
+});
