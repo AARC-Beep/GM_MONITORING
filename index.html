@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SeaCrew Dashboard — Daily Routine Log</title>
 
-<!-- Bootstrap & Font Awesome -->
+<!-- Bootstrap CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-
 <!-- jsPDF + AutoTable -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-:root { --sidebar-width: 260px; --navy:#0b2a4a; --accent:#123855; }
+:root { --sidebar-width:260px; --navy:#0b2a4a; --accent:#123855; }
 body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:0; background:#f2f6fb; color:#222; }
 .sidebar { width: var(--sidebar-width); position: fixed; left:0; top:0; bottom:0; background: var(--navy); color:#fff; padding:18px; overflow:auto; }
 .sidebar h4 { margin-bottom:12px; font-weight:600; color:#fff; }
@@ -31,18 +31,26 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 .form-row .form-control { min-width:140px; }
 .entry-actions button { margin-left:6px; }
 .fixed-bottom-left { position: fixed; left: 18px; bottom: 18px; z-index: 2000; color: #666; }
+
+/* layout for list rows */
 .row-entry { display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid #eef3fb; }
 .row-entry .left { flex:1; }
 .row-entry .right { display:flex; gap:8px; align-items:center; }
+
+/* Chatboard */
 .chatboard { display:flex; flex-direction:column; height:320px; gap:8px; }
 .chat-log { flex:1; overflow:auto; padding:8px; border-radius:8px; background:#fbfdff; border:1px solid #eef3fb; }
 .chat-inputs { display:flex; gap:8px; align-items:center; }
+
+/* responsive */
 @media (max-width:900px){ .content{ margin-left:16px; margin-right:12px } .sidebar{ position:relative; width:100%; } }
 @media print { .sidebar, button, .entry-actions, form, .chatboard { display:none !important } }
+
+/* small helpers */
 .btn-link-look { background:transparent; border:none; color:var(--accent); text-decoration:underline; padding:0; }
 .badge-synced { font-size:0.75rem; color:#0b6; margin-left:6px; }
 .login-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; }
-.login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+.login-card { width:420px; padding:20px; border-radius:12px; background:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.25); }
 </style>
 </head>
 <body>
@@ -51,279 +59,169 @@ body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; 
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h5>TIWALA — SeaCrew Login</h5>
-    <input id="loginUser" class="form-control mb-2" placeholder="Username">
-    <input id="loginPass" type="password" class="form-control mb-2" placeholder="Password">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div><input type="checkbox" id="saveCred"> Remember (local only)</div>
+    <div class="mb-2"><input id="loginUser" class="form-control" placeholder="Username"></div>
+    <div class="mb-2"><input id="loginPass" type="password" class="form-control" placeholder="Password"></div>
+    <div class="d-flex justify-content-between align-items-center">
+      <div><input type="checkbox" id="saveCred"> <label for="saveCred">Remember (local only)</label></div>
       <button id="loginBtn" class="btn btn-primary">Sign in</button>
     </div>
-    <div class="small-note" id="loginMsg"></div>
+    <div class="mt-2 small-note" id="loginMsg"></div>
   </div>
 </div>
 
 <!-- Sidebar -->
-<nav class="sidebar" aria-label="Main navigation">
-  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY ROUTINE LOG</h4>
-  <a href="#" class="active" data-target="dashboard">Dashboard</a>
+<nav class="sidebar" aria-label="Main navigation" style="display:none">
+  <h4><i class="fa-solid fa-ship"></i> SeaCrew — DAILY LOG</h4>
+  <a href="#" data-target="dashboard">Dashboard</a>
   <a href="#" data-target="vesselJoin">Vessel Crew Joining</a>
   <a href="#" data-target="arrivingCrew">Arriving Crew</a>
   <a href="#" data-target="dailyUpdates">Daily Updates</a>
   <a href="#" data-target="memo">Memo</a>
   <a href="#" data-target="training">Training</a>
   <a href="#" data-target="pni">P&amp;I / Events</a>
-
-  <hr style="border-color:rgba(255,255,255,0.06)"/>
-  <!-- Useful Tools / External Links -->
+  <hr/>
   <div style="margin-top:6px">
     <div class="small-note" style="color:#cfe8ff;margin-bottom:6px">Useful Tools</div>
-    <a href="https://flightaware.com/live/airport/RPLL" target="_blank" rel="noopener"><i class="fa-solid fa-plane"></i> Flights — FlightAware (MNL)</a>
-    <a href="https://www.msn.com/en-ph/news" target="_blank" rel="noopener"><i class="fa-solid fa-newspaper"></i> News — MSN Philippines</a>
-    <a href="https://zoom.earth/" target="_blank" rel="noopener"><i class="fa-solid fa-cloud-sun"></i> Weather — Zoom Earth</a>
-    <a href="https://dmw.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-passport"></i> DMW — Dept. of Migrant Workers</a>
-    <a href="https://owwa.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-people-group"></i> OWWA</a>
-    <a href="https://marina.gov.ph/" target="_blank" rel="noopener"><i class="fa-solid fa-anchor"></i> MARINA</a>
+    <a href="https://flightaware.com/live/airport/RPLL" target="_blank">Flights — FlightAware (MNL)</a>
+    <a href="https://www.msn.com/en-ph/news" target="_blank">News — MSN Philippines</a>
+    <a href="https://zoom.earth/" target="_blank">Weather — Zoom Earth</a>
+    <a href="https://dmw.gov.ph/" target="_blank">DMW — Dept. of Migrant Workers</a>
+    <a href="https://owwa.gov.ph/" target="_blank">OWWA</a>
+    <a href="https://marina.gov.ph/" target="_blank">MARINA</a>
   </div>
+  <hr/>
 </nav>
 
-<!-- Main content -->
-<main class="content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Main Content -->
+<main class="content" role="main" style="display:none">
+  <div class="d-flex justify-content-between align-items-start mb-3">
     <h2>SeaCrew Dashboard</h2>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-secondary" id="syncBtn">Sync now</button>
       <button class="btn btn-outline-danger" id="clearLocalBtn">Clear local</button>
       <button class="btn btn-primary" id="pdfBtn">Monthly PDF</button>
-      <button class="btn btn-outline-info" id="logoutBtn" style="display:none">Logout</button>
+      <button class="btn btn-outline-info" id="logoutBtn">Logout</button>
     </div>
   </div>
 
-  <!-- Dashboard preview -->
   <section id="dashboard" class="section active">
-    <div class="row g-3">
-      <div class="col-md-8">
-        <div class="card-slim">
-          <h5>Quick Overview</h5>
-          <div class="row g-3 mt-3">
-            <div class="col-md-6" id="vesselPreviewCard"></div>
-            <div class="col-md-6" id="arrivalsPreviewCard"></div>
-            <div class="col-md-6" id="updatesPreviewCard"></div>
-            <div class="col-md-6" id="memoPreviewCard"></div>
-            <div class="col-md-6" id="trainingPreviewCard"></div>
-            <div class="col-md-6" id="pniPreviewCard"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chatboard -->
-      <div class="col-md-4">
-        <div class="card-slim">
-          <h6>ChatBoard (public)</h6>
-          <div class="chatboard">
-            <div class="chat-log" id="chatLog"></div>
-            <div class="chat-inputs">
-              <input id="chatName" class="form-control" placeholder="Your name" value="Captain">
-              <input id="chatMsg" class="form-control" placeholder="Message">
-              <button class="btn btn-primary" id="chatSendBtn">Send</button>
-            </div>
-          </div>
+    <div class="card-slim">
+      <h5>Quick Overview</h5>
+      <div id="overviewCards" class="d-flex flex-wrap gap-3"></div>
+    </div>
+    <div class="card-slim">
+      <h6>ChatBoard (public)</h6>
+      <div class="chatboard">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-inputs">
+          <input id="chatName" class="form-control" placeholder="Your name" value="Captain"/>
+          <input id="chatMsg" class="form-control" placeholder="Message"/>
+          <button class="btn btn-primary" id="chatSendBtn">Send</button>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Example: Vessel Join Section -->
-  <section id="vesselJoin" class="section" style="display:none">
-    <h4>Vessel Crew Joining</h4>
-    <div class="form-row mb-3">
-      <input id="vjVessel" class="form-control" placeholder="Vessel">
-      <input id="vjPort" class="form-control" placeholder="Port">
-      <input id="vjNo" class="form-control" type="number" placeholder="No. of Crew">
-      <input id="vjRank" class="form-control" placeholder="Rank">
-      <input id="vjDate" class="form-control" type="date" placeholder="Depart Date">
-      <input id="vjFlight" class="form-control" placeholder="Flight">
-      <button class="btn btn-success" id="vjAddBtn">Add</button>
-      <button class="btn btn-secondary" id="vjResetBtn">Reset</button>
-    </div>
-    <div id="vj_list" class="card-slim"></div>
-  </section>
+  <!-- Other sections like Vessel Join / Arrivals / Updates / Memo / Training / PnI -->
+  <section id="vesselJoin" class="section" style="display:none"></section>
+  <section id="arrivingCrew" class="section" style="display:none"></section>
+  <section id="dailyUpdates" class="section" style="display:none"></section>
+  <section id="memo" class="section" style="display:none"></section>
+  <section id="training" class="section" style="display:none"></section>
+  <section id="pni" class="section" style="display:none"></section>
 
-  <!-- Other sections (arrivingCrew, dailyUpdates, memo, training, pni) will have similar structures -->
-
+  <div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
 </main>
 
-<div class="fixed-bottom-left">© 2025 SeaCrew Dashboard</div>
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec"; // <-- replace with your deployed GAS URL
 
-// ===================== CONFIG =====================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbw--x_wiJ6Vm9CICyE7k-SebrcLytHhvfe4w31BtEN17FvGtG0f6zqLn96sSgV4ra2l/exec";
-const SECTIONS = ["dashboard","vesselJoin","arrivingCrew","dailyUpdates","memo","training","pni","helpSection"];
-const SHEETS = {
-  vesselJoin: "Vessel_join",
-  arrivingCrew: "Arrivals",
-  dailyUpdates: "Updates",
-  memo: "Memo",
-  training: "Training",
-  pni: "PNI",
-  chatBoard: "ChatBoard",
-  users: "Users"
-};
-let DATA = {}; // cached data per sheet
-let CURRENT_USER = null;
+// ---------------- LOGIN ----------------
+const loginOverlay = document.getElementById("loginOverlay");
+const sidebar = document.querySelector(".sidebar");
+const mainContent = document.querySelector(".content");
+const loginMsg = document.getElementById("loginMsg");
 
-// ===================== UTIL =====================
-function outputDebug(msg) { console.log("[SeaCrew]", msg); }
-function showSection(secId){
-  SECTIONS.forEach(s => document.getElementById(s).style.display = (s === secId) ? "block" : "none");
-  document.querySelectorAll(".sidebar a").forEach(a => a.classList.toggle("active", a.dataset.target===secId));
-}
-function navTo(event, secId){ event.preventDefault(); showSection(secId); }
-function navToElement(secId){ showSection(secId); }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-// ===================== LOGIN =====================
-async function showLogin(){ document.getElementById("loginOverlay").style.display="flex"; }
-async function hideLogin(){ document.getElementById("loginOverlay").style.display="none"; }
-async function login(){
-  const username = document.getElementById("loginUser").value.trim();
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  const username = document.getElementById("loginUser").value;
   const password = document.getElementById("loginPass").value;
-  const cbName = "cbLogin"+Date.now();
-  window[cbName] = (res) => {
-    if(res.status==="success"){
-      CURRENT_USER = res;
-      document.getElementById("loginMsg").innerText="";
-      document.getElementById("logoutBtn").style.display="inline-block";
-      hideLogin();
-      fetchAllData();
-    } else {
-      document.getElementById("loginMsg").innerText=res.message;
-    }
-    delete window[cbName];
-  };
-  const url = `${GAS_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=${cbName}`;
-  loadJSONP(url);
-}
-function logout(){
-  CURRENT_USER=null;
-  document.getElementById("logoutBtn").style.display="none";
-  showLogin();
-}
 
-// ===================== FETCH =====================
-function loadJSONP(url){
-  const s = document.createElement("script");
-  s.src = url; s.async=true;
-  document.body.appendChild(s);
-  s.onload=()=>document.body.removeChild(s);
-}
-function fetchSheet(sheetKey, cb){
-  const cbName = "cbFetch"+sheetKey+Date.now();
-  window[cbName] = (res)=>{ if(res.status==="success"){ DATA[sheetKey]=res.data; cb && cb(res.data); } delete window[cbName]; };
-  const url = `${GAS_URL}?action=fetch&sheet=${SHEETS[sheetKey]}&callback=${cbName}`;
-  loadJSONP(url);
-}
-function fetchAllData(){
-  Object.keys(SHEETS).forEach(k=>{
-    if(k!=="users" && k!=="chatBoard") fetchSheet(k, updatePreviews);
-  });
-  fetchChatBoard();
-}
+  try {
+    const res = await fetch(`${GAS_URL}?action=auth&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&callback=cb`);
+    const text = await res.text();
+    const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
 
-// ===================== PREVIEWS =====================
-function updatePreviews(){
-  // VesselJoin preview
-  document.getElementById("vesselPreviewSmall").innerHTML = DATA.vesselJoin.map(r=>`<div>${r.Vessel || ""} | ${r.Port || ""} | ${r['No. of Crew'] || ""}</div>`).join("");
-  document.getElementById("countVessel").innerText = DATA.vesselJoin.length;
-  // Arrivals preview
-  document.getElementById("arrivalsPreviewSmall").innerHTML = DATA.arrivingCrew.map(r=>`<div>${r.Vessel || ""} | ${r.Port || ""} | ${r['No. of Crew'] || ""}</div>`).join("");
-  document.getElementById("countArrivals").innerText = DATA.arrivingCrew.length;
-  // Updates preview
-  document.getElementById("updatesPreviewSmall").innerHTML = DATA.dailyUpdates.map(r=>`<div>${r.Title || ""} | ${r.Details || ""}</div>`).join("");
-  document.getElementById("countUpdates").innerText = DATA.dailyUpdates.length;
-  // Memo preview
-  document.getElementById("memoPreviewSmall").innerHTML = DATA.memo.map(r=>`<div>${r.Title || ""} | ${r.Details || ""}</div>`).join("");
-  document.getElementById("countMemo").innerText = DATA.memo.length;
-  // Training preview
-  document.getElementById("trainingPreviewSmall").innerHTML = DATA.training.map(r=>`<div>${r.Subject || ""} | ${r.Details || ""}</div>`).join("");
-  document.getElementById("countTraining").innerText = DATA.training.length;
-  // PnI preview
-  document.getElementById("pniPreviewSmall").innerHTML = DATA.pni.map(r=>`<div>${r.Subject || ""} | ${r.Details || ""}</div>`).join("");
-  document.getElementById("countPNI").innerText = DATA.pni.length;
-}
-
-// ===================== ADD / UPDATE / DELETE =====================
-function appendRow(sheetKey, rowData){
-  const cbName = "cbAppend"+sheetKey+Date.now();
-  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
-  const url = `${GAS_URL}?action=append_uid&sheet=${SHEETS[sheetKey]}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=${cbName}`;
-  loadJSONP(url);
-}
-function updateRow(sheetKey, uid, rowData){
-  const cbName = "cbUpdate"+sheetKey+Date.now();
-  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
-  const url = `${GAS_URL}?action=update_uid&sheet=${SHEETS[sheetKey]}&uid=${encodeURIComponent(uid)}&row=${encodeURIComponent(JSON.stringify(rowData))}&callback=${cbName}`;
-  loadJSONP(url);
-}
-function deleteRow(sheetKey, uid){
-  if(!confirm("Confirm delete? This will archive the item.")) return;
-  const cbName = "cbDelete"+sheetKey+Date.now();
-  window[cbName]=(res)=>{ if(res.status==="success"){ fetchSheet(sheetKey,updatePreviews); } delete window[cbName]; };
-  const url = `${GAS_URL}?action=delete_uid&sheet=${SHEETS[sheetKey]}&uid=${encodeURIComponent(uid)}&callback=${cbName}`;
-  loadJSONP(url);
-}
-
-// ===================== CHATBOARD =====================
-function fetchChatBoard(){
-  const cbName = "cbChat"+Date.now();
-  window[cbName]=(res)=>{
-    if(res.status==="success"){
-      const log = document.getElementById("chatLog");
-      log.innerHTML = res.data.map(r=>`<div><strong>${r.Name}</strong>: ${r.Message}</div>`).join("");
-      log.scrollTop=log.scrollHeight;
-      // Play alert if new message
-      if(window.LAST_CHAT_COUNT!==undefined && res.data.length>window.LAST_CHAT_COUNT){
-        const audio = new Audio("https://www.soundjay.com/button/beep-07.wav");
-        audio.play();
-      }
-      window.LAST_CHAT_COUNT=res.data.length;
-    }
-    delete window[cbName];
-  };
-  const url = `${GAS_URL}?action=fetch&sheet=${SHEETS.chatBoard}&callback=${cbName}`;
-  loadJSONP(url);
-}
-function sendChat(){
-  const name = document.getElementById("chatName").value.trim() || "Anonymous";
-  const msg = document.getElementById("chatMsg").value.trim();
-  if(!msg) return;
-  appendRow("chatBoard",{Name:name,Message:msg,Date:new Date().toLocaleString()});
-  document.getElementById("chatMsg").value="";
-  setTimeout(fetchChatBoard,500);
-}
-
-// ===================== PDF =====================
-function printSectionPDF(sectionId,fileName,monthly=false){
-  const doc = new jspdf.jsPDF({orientation:"landscape"});
-  let rows=[], headers=[];
-  if(sectionId!=="dashboard"){
-    const sheetKey = Object.keys(SHEETS).find(k=>k!== "users" && k!=="chatBoard" && document.getElementById(sectionId));
-    const data = DATA[sheetKey] || [];
-    if(data.length===0){ alert("No data to export"); return; }
-    headers = Object.keys(data[0]);
-    rows = data.map(r=>headers.map(h=>r[h]));
-  }
-  doc.autoTable({head:[headers],body:rows,styles:{fontSize:8}});
-  doc.save(fileName+".pdf");
-}
-
-// ===================== EVENT LISTENERS =====================
-document.getElementById("loginBtn").onclick=login;
-document.getElementById("logoutBtn").onclick=logout;
-document.getElementById("chatSendBtn").onclick=sendChat;
-document.querySelectorAll(".sidebar a").forEach(a=>{
-  a.onclick=(e)=>{ e.preventDefault(); showSection(a.dataset.target); };
+    if(data.status==="success"){
+      loginOverlay.style.display="none";
+      sidebar.style.display="block";
+      mainContent.style.display="block";
+      loadAllSections();
+    } else loginMsg.textContent = data.message;
+  } catch(e){ loginMsg.textContent = "Login failed"; console.error(e); }
 });
 
-// ===================== INIT =====================
-showLogin();
+// ---------------- NAVIGATION ----------------
+document.querySelectorAll(".sidebar a[data-target]").forEach(a=>{
+  a.addEventListener("click", e=>{
+    e.preventDefault();
+    const target = a.getAttribute("data-target");
+    document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+    document.getElementById(target).style.display="block";
+    document.querySelectorAll(".sidebar a").forEach(link=>link.classList.remove("active"));
+    a.classList.add("active");
+  });
+});
+
+// ---------------- CHAT ----------------
+const chatLog = document.getElementById("chatLog");
+document.getElementById("chatSendBtn").addEventListener("click", async ()=>{
+  const name = document.getElementById("chatName").value || "Captain";
+  const msg = document.getElementById("chatMsg").value;
+  if(!msg) return;
+  try{
+    await fetch(`${GAS_URL}?action=append_uid&sheet=ChatBoard&row=${encodeURIComponent(JSON.stringify([Date.now(),name,msg]))}&callback=cb`);
+    document.getElementById("chatMsg").value="";
+    loadChatBoard();
+  }catch(e){ console.error(e); }
+});
+
+async function loadChatBoard(){
+  try{
+    const res = await fetch(`${GAS_URL}?action=fetch&sheet=ChatBoard&callback=cb`);
+    const text = await res.text();
+    const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
+    if(data.status==="success"){
+      chatLog.innerHTML = data.data.map(r=>`<div><b>${r[1]}</b>: ${r[2]}</div>`).join("");
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }catch(e){ console.error(e); }
+}
+
+// ---------------- FETCH / INIT SECTIONS ----------------
+async function loadAllSections(){
+  const sections = ["vesselJoin","arrivingCrew","dailyUpdates","memo","training","pni"];
+  for(const s of sections){
+    try{
+      const res = await fetch(`${GAS_URL}?action=fetch&sheet=${s}&callback=cb`);
+      const text = await res.text();
+      const data = JSON.parse(text.replace(/^cb\(/,"").replace(/\);$/,""));
+      if(data.status==="success"){
+        // populate preview table or form list
+        console.log(`Loaded ${s}`,data.data);
+      }
+    }catch(e){ console.error(e); }
+  }
+  loadChatBoard();
+}
+
+// ---------------- PDF ----------------
+document.getElementById("pdfBtn").addEventListener("click", ()=>{
+  // for simplicity, just export the overview section
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:"landscape" });
+  doc.text("SeaCrew Monthly Report",10,10);
+  doc.save("SeaCrew_Monthly_Report.pdf");
+});
 </script>
 </body>
 </html>
